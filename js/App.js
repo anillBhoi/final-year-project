@@ -979,20 +979,22 @@ function applyRoleUI() {
     const isExporter = !!window.isExporter
     // Show/hide common exporter-only sections if present
     if (isExporter) {
-      $('#upload_file_button').attr('disabled', false)
-      $('#doc-file').attr('disabled', false)
+      // Hide legacy uploader for exporters
+      try { document.getElementById('legacy-uploader').style.display = 'none' } catch(e){}
       $('.box').removeClass('d-none')
       $('.loading-tx').removeClass('d-none')
       $('#recent-header').show()
       $('#cert-generator').removeClass('d-none')
+      // Show certificate nav items if present
+      document.querySelectorAll('.exporter-only').forEach(el => { el.classList.remove('d-none') })
     } else {
-      $('#upload_file_button').attr('disabled', true)
-      $('#doc-file').attr('disabled', true)
+      try { document.getElementById('legacy-uploader').style.display = 'block' } catch(e){}
       $('.box').addClass('d-none')
       // keep loading hidden when not exporter
       $('.loading-tx').addClass('d-none')
       $('#recent-header').hide()
       $('#cert-generator').addClass('d-none')
+      document.querySelectorAll('.exporter-only').forEach(el => { el.classList.add('d-none') })
     }
   } catch (e) {
     // no-op if elements not present on current page
@@ -1008,43 +1010,69 @@ function drawCertificateToCanvas(fields) {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+  // Helper to render foreground text layers (always drawn after template)
+  const renderForeground = () => {
   // border
   ctx.strokeStyle = '#0c5c75'
   ctx.lineWidth = 10
   ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
 
   // heading
+    const fontFamily = (document.getElementById('cert-font')||{}).value || 'Arial'
   ctx.fillStyle = '#143f4a'
-  ctx.font = 'bold 42px Arial'
+    ctx.font = `bold 42px ${fontFamily}`
   ctx.textAlign = 'center'
   ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 120)
 
   // issuer
   const issuerText = fields.issuer && fields.issuer.trim().length ? fields.issuer : (window.info || 'Authorised Exporter')
-  ctx.font = '20px Arial'
+    ctx.font = `20px ${fontFamily}`
   ctx.fillStyle = '#555'
   ctx.fillText(`Issued by: ${issuerText}`, canvas.width / 2, 160)
 
   // student name
-  ctx.font = 'bold 48px Arial'
-  ctx.fillStyle = '#111'
+    const color = (document.getElementById('cert-color')||{}).value || '#111'
+    ctx.font = `bold 48px ${fontFamily}`
+    ctx.fillStyle = color
   ctx.fillText(fields.student || 'Student Name', canvas.width / 2, 260)
 
   // course
-  ctx.font = '28px Arial'
+    ctx.font = `28px ${fontFamily}`
   ctx.fillStyle = '#222'
-  ctx.fillText(`For: ${fields.course || 'Course/Program'}`, canvas.width / 2, 320)
+    const alignSel = (document.getElementById('cert-align')||{}).value || 'center'
+    ctx.textAlign = alignSel
+    const x = alignSel==='left'? 100: alignSel==='right'? canvas.width-100: canvas.width/2
+    ctx.fillText(`For: ${fields.course || 'Course/Program'}`, x, 320)
 
   // grade and date
-  ctx.font = '22px Arial'
+    ctx.font = `22px ${fontFamily}`
   ctx.fillStyle = '#333'
+    ctx.textAlign = 'center'
   ctx.fillText(`Grade: ${fields.grade || 'N/A'}`, canvas.width / 2, 370)
   ctx.fillText(`Date: ${fields.date || new Date().toISOString().slice(0,10)}`, canvas.width / 2, 410)
 
   // footer note
-  ctx.font = '16px Arial'
+    ctx.font = `16px ${fontFamily}`
   ctx.fillStyle = '#777'
   ctx.fillText('Verify this certificate on-chain via the Verify page using its QR/Hash.', canvas.width / 2, 560)
+  }
+
+  // custom template background (draw first, then foreground in onload)
+  try {
+    const tplDataUrl = window.localStorage.getItem('cert_template_'+(window.userAddress||''))
+    if (tplDataUrl) {
+      const img = new Image()
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        renderForeground()
+      }
+      img.src = tplDataUrl
+      return canvas
+    }
+  } catch(e) {}
+
+  // No template → just draw foreground
+  renderForeground()
 
   return canvas
 }
@@ -1065,6 +1093,8 @@ function previewCertificate() {
 
 async function generateAndUploadCertificate() {
   try {
+    // Debounce: disable the button immediately to prevent double clicks
+    try { document.getElementById('btn-generate-upload').setAttribute('disabled','true') } catch(e){}
     if (!window.isExporter) {
       $('#note').html(`<h5 class="text-center text-danger">Only authorised exporters can generate certificates.</h5>`)
       return
@@ -1088,6 +1118,28 @@ async function generateAndUploadCertificate() {
     const certHash = web3.utils.soliditySha3('0x' + hexString)
     window.hashedfile = certHash
 
+    // Pre-flight checks to avoid generic JSON-RPC errors
+    const onWrongNet = await validateNetwork()
+    if (!onWrongNet) return
+
+    // Check exporter permission (must have info)
+    try {
+      const info = await window.contractRPC.methods.getExporterInfo(window.userAddress).call({ from: window.userAddress })
+      if (!info || String(info).trim().length === 0) {
+        $('#note').html(`<h5 class="text-danger">Only authorised exporters can register documents.</h5>`)
+        return
+      }
+    } catch (e) {}
+
+    // Ensure this hash is not already registered
+    try {
+      const result = await window.contractRPC.methods.findDocHash(window.hashedfile).call({ from: window.userAddress })
+      if (result && Number(result[1]) !== 0) {
+        $('#note').html(`<h5 class="text-danger">This certificate is already registered on-chain.</h5>`)
+        return
+      }
+    } catch (e) {}
+
     // Upload to IPFS
     $('#loader').removeClass('d-none')
     $('#note').html(`<h5 class="text-info">Uploading certificate to IPFS...</h5>`)
@@ -1097,18 +1149,56 @@ async function generateAndUploadCertificate() {
 
     // Store hash + CID on-chain
     $('#note').html(`<h5 class="text-info">Please confirm the blockchain transaction...</h5>`)
+
+    // Gas estimate first, to surface revert reason before prompting wallet
+    try {
+      await window.contract.methods.addDocHash(window.hashedfile, window.ipfsCid).estimateGas({ from: window.userAddress })
+    } catch (e) {
+      let friendly = 'Transaction would fail. '
+      const msg = (e && e.message) || ''
+      if (msg.includes('Caller not authorised') || msg.includes('not authorised')) {
+        friendly += 'Your address is not an authorised exporter.'
+      } else if (msg.includes('already exists')) {
+        friendly += 'This certificate hash already exists.'
+      } else if (msg.includes('insufficient funds')) {
+        friendly += 'Insufficient balance for gas.'
+      } else {
+        friendly += msg
+      }
+      $('#note').html(`<h5 class="text-danger">${friendly}</h5>`)
+      return
+    }
+
     await window.contract.methods
       .addDocHash(window.hashedfile, window.ipfsCid)
       .send({ from: window.userAddress })
       .on('transactionHash', function (_hash) {
-        $('#note').html(`<h5 class="text-info p-1 text-center">Waiting for confirmation...</h5>`) })
+        $('#note').html(`<h5 class="text-info p-1 text-center">Waiting for confirmation...</h5>`) 
+        try { showToast('Transaction sent. Waiting for confirmation…','info') } catch(e){}
+      })
       .on('receipt', function (receipt) {
         printUploadInfo(receipt)
         generateQRCode()
         $('#note').html(`<h5 class="text-success">Certificate published successfully.</h5>`)
+        try { showToast('Certificate generated and uploaded successfully.','success') } catch(e){}
+        // Offer local download without page reload
+        try {
+          const canvasEl = document.getElementById('cert-canvas')
+          if (canvasEl) {
+            const url = canvasEl.toDataURL('image/png')
+            const a = document.createElement('a')
+            const name = (document.getElementById('cert-student')||{}).value || 'certificate'
+            a.href = url
+            a.download = `${name.replace(/\s+/g,'_')}.png`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          }
+        } catch(e){}
       })
       .on('error', function (error) {
         $('#note').html(`<h5 class="text-danger">${error.message}</h5>`)
+        try { showToast(error.message || 'Transaction failed','danger') } catch(e){}
       })
 
   } catch (e) {
@@ -1116,7 +1206,25 @@ async function generateAndUploadCertificate() {
     $('#note').html(`<h5 class="text-danger">${e.message || 'Certificate generation failed'}</h5>`)
   } finally {
     $('#loader').addClass('d-none')
+    // Re-enable button after the flow finishes
+    try { document.getElementById('btn-generate-upload').removeAttribute('disabled') } catch(e){}
   }
+}
+
+// Lightweight toast helper (Bootstrap-like style without dependency)
+function showToast(message, variant = 'info') {
+  try {
+    const id = 'toast-' + Date.now()
+    const colors = { info: '#0dcaf0', success: '#198754', danger: '#dc3545', warning: '#ffc107' }
+    const bg = colors[variant] || colors.info
+    const el = document.createElement('div')
+    el.id = id
+    el.style = 'position:fixed;right:16px;bottom:16px;z-index:1055;max-width:360px;padding:12px 16px;border-radius:8px;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.2);background:'+bg
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px"><span>${message}</span><button style="margin-left:auto;background:transparent;border:none;color:#fff;font-weight:bold;cursor:pointer">×</button></div>`
+    el.querySelector('button').onclick = () => el.remove()
+    document.body.appendChild(el)
+    setTimeout(() => { try { el.remove() } catch(e){} }, 5000)
+  } catch (e) {}
 }
 
 async function listen() {
@@ -1277,3 +1385,65 @@ async function simpleTest() {
     return false;
   }
 }
+
+// Bind custom template controls on Upload page
+window.addEventListener('load', () => {
+  try {
+    if (!window.location.pathname.includes('upload.html')) return
+
+    const tplFile = document.getElementById('tpl-file')
+    const btnApplyTemplate = document.getElementById('btn-apply-template')
+    const btnClearTemplate = document.getElementById('btn-clear-template')
+
+    const storeTemplate = async (file) => {
+      if (!file) return
+      const arrayBuf = await file.arrayBuffer()
+      const blob = new Blob([new Uint8Array(arrayBuf)], { type: file.type })
+      const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.readAsDataURL(blob)
+      })
+      window.localStorage.setItem('cert_template_' + (window.userAddress || ''), dataUrl)
+      previewCertificate()
+    }
+
+    if (btnApplyTemplate) {
+      btnApplyTemplate.addEventListener('click', async () => {
+        if (tplFile && tplFile.files && tplFile.files[0]) {
+          await storeTemplate(tplFile.files[0])
+        }
+      })
+    }
+    if (btnClearTemplate) {
+      btnClearTemplate.addEventListener('click', () => {
+        window.localStorage.removeItem('cert_template_' + (window.userAddress || ''))
+        previewCertificate()
+      })
+    }
+
+    // Auto-preview on load if a template is already saved
+    setTimeout(() => { try { previewCertificate() } catch(e){} }, 0)
+
+    // Download button
+    const dlBtn = document.getElementById('download-cert')
+    if (dlBtn) {
+      dlBtn.addEventListener('click', () => {
+        const canvas = document.getElementById('cert-canvas')
+        if (!canvas) return
+        // Ensure latest fields are rendered
+        previewCertificate()
+        const url = canvas.toDataURL('image/png')
+        const a = document.createElement('a')
+        a.href = url
+        const name = (document.getElementById('cert-student')||{}).value || 'certificate'
+        a.download = `${name.replace(/\s+/g,'_')}.png`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      })
+    }
+  } catch (e) {
+    console.log('Template controls init error:', e)
+  }
+})

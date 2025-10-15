@@ -122,9 +122,53 @@
               <input id="cert-issuer" type="text" class="form-control" placeholder="Issuer (defaults to exporter org)" />
             </div>
           </div>
-          <div class="d-flex gap-2 mb-3">
+          <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+            <select id="cert-font" class="form-select w-auto">
+              <option value="Arial" selected>Arial</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times</option>
+              <option value="Verdana">Verdana</option>
+            </select>
+            <select id="cert-scale" class="form-select w-auto">
+              <option value="1">1x</option>
+              <option value="1.1">1.1x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+            </select>
+            <select id="cert-align" class="form-select w-auto">
+              <option value="center" selected>Center</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+            <button type="button" id="cert-bold" class="btn btn-outline-secondary">B</button>
+            <button type="button" id="cert-italic" class="btn btn-outline-secondary">I</button>
+            <input type="color" id="cert-color" class="form-control form-control-color" value="#111111" title="Pick text color">
             <button type="button" class="btn btn-secondary" onclick="previewCertificate()">Preview</button>
-            <button type="button" class="btn btn-success" onclick="generateAndUploadCertificate()">Generate & Upload</button>
+            <button type="button" class="btn btn-outline-primary" id="download-cert">Download</button>
+            <button type="button" class="btn btn-success" id="btn-generate-upload" onclick="generateAndUploadCertificate()">Generate & Upload</button>
+          </div>
+          <div class="row g-3 mb-2">
+            <div class="col-md-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fld-org" checked>
+                <label class="form-check-label" for="fld-org">Organization's Name</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fld-holder" checked>
+                <label class="form-check-label" for="fld-holder">Holder's Name</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fld-tag" checked>
+                <label class="form-check-label" for="fld-tag">Tagline/Description</label>
+              </div>
+            </div>
+            <div class="col-md-8 d-flex gap-2 flex-wrap">
+              <input id="cert-custom" type="text" class="form-control" placeholder="Custom line (optional)">
+              <button type="button" class="btn btn-outline-primary" id="btn-add-custom">+ Add</button>
+              <input id="tpl-file" type="file" accept="image/*" class="form-control w-auto" />
+              <button type="button" class="btn btn-outline-secondary" id="btn-apply-template">Apply Template</button>
+              <button type="button" class="btn btn-outline-secondary" id="btn-clear-template">Clear Template</button>
+            </div>
           </div>
           <div class="bg-light p-2 text-center">
             <canvas id="cert-canvas" width="900" height="600" style="max-width:100%;border:1px dashed #ccc"></canvas>
@@ -132,11 +176,13 @@
           <small class="text-muted d-block mt-2">A unique hash of the generated certificate will be stored on-chain, and the image will be pinned to IPFS.</small>
         </div>
 
-        <input onchange="get_Sha3()" id="doc-file" type="file" accept="application/pdf, image/*" />
-        <span id="note" class="text-danger"></span>
-        <img id="loader" class="d-none" src="files/loader.svg" alt="loader" />
-        <input onclick="sendHash()" class="btn upload-button main-button" type="submit" value="Upload document"
-          id="upload_file_button" />
+        <div id="legacy-uploader">
+          <input onchange="get_Sha3()" id="doc-file" type="file" accept="application/pdf, image/*" />
+          <span id="note" class="text-danger"></span>
+          <img id="loader" class="d-none" src="files/loader.svg" alt="loader" />
+          <input onclick="sendHash()" class="btn upload-button main-button" type="submit" value="Upload document"
+            id="upload_file_button" />
+        </div>
       </div>
     </div>
     <!-- Transaction information -->

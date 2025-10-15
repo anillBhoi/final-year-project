@@ -40,9 +40,9 @@ async function addExporter() {
       throw new Error('Only contract owner can add exporters')
     }
 
-    // Add the exporter
+    // Add the exporter (matches ABI add_Exporter)
     await window.contract.methods
-      .addExporter(address, info)
+      .add_Exporter(address, info)
       .send({ from: window.userAddress })
       .on('transactionHash', function(hash) {
         $('#note').html(`<h5 class="text-info">Please wait for transaction to be mined...</h5>`)
