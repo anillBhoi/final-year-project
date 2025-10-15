@@ -6,21 +6,58 @@
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
-    <!-- Webpage Title -->
     <title>CertiFlex</title>
     <link rel="stylesheet" href="./css/loader.css">
     <link href="./css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />    <link href="./css/aos.min.css" rel="stylesheet" />
     <link href="./css/main.css" rel="stylesheet" />
-    <!-- Favicon -->
     <link rel="icon" href="./assets/images/icon.png" />
+
+    <style>
+      /* Ensures the navbar sits on top */
+      .navbar {
+          z-index: 1030; /* Bootstrap's standard high z-index for fixed elements */
+          position: fixed !important; /* Make it fixed to the top */
+          width: 100%;
+          top: 0;
+      }
+      /* Container for the video and overlaid text */
+      #header {
+          position: relative; /* Essential for containing the absolutely positioned text */
+          padding-top: 0 !important; /* Remove section padding */
+          padding-bottom: 0 !important;
+          /* Set height equal to video height + margins for proper flow */
+          height: 800px; /* Adjusted to cover the video (650px) plus margins */
+      }
+      /* Positioning the text content over the video */
+      #header .text-overlay {
+          position: absolute;
+          top: 50%; /* Center vertically (adjust as needed) */
+          transform: translateY(-50%); /* Center vertically (adjust as needed) */
+          left: 0;
+          right: 0;
+          z-index: 10; /* Above the video */
+      }
+      /* Adjust video margins to be only internal to the section */
+      #myVideo {
+          margin: 5px auto 50px auto !important; /* Use original margins */
+      }
+      /* Adjust the first section after home to account for the fixed navbar */
+      .information {
+          padding-top: 5rem; /* Add extra padding to the content below the home section */
+      }
+      /* If the background is dark, the "Go Verify" button text needs to be visible */
+      .btn.bg-danger {
+          z-index: 11; /* Ensure button is above video */
+          position: relative; 
+      }
+    </style>
   </head>
   <body>
     <div class="loader-wraper">
       <div class="lds-roller"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
     </div>
-  <!--NavBar Start-->
-       <nav class="navbar navbar-expand-lg navbar-light bg-light py-3 navbar-dark">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light py-3 navbar-dark fixed-top">
         <div class="container">
           <a class="navbar-brand" href="index.html">
             <i class="fa-brands fa-ethereum"></i>
@@ -48,19 +85,30 @@
                 <a class="nav-link" href="admin.html">Admin</a>
                 </li>            
                   <li class="nav-item">
-              <!-- <a class="nav-link " href="about.html">Team</a> -->
               </li>
           </ul>
           </div>
         </div>
         </nav>
 
-    <!-- Home -->
-    <section class="home py-5 d-flex align-items-center" id="header">
-<video autoplay muted loop id="myVideo">
-  <source src="./files/videoeth.mp4" type="video/mp4">
-</video>
-      <div class="container  text text-light py-5" data-aos="fade-right">
+    <section class="home" id="header"> 
+        
+        <video autoplay muted loop id="myVideo"
+          style="display: block;
+                 width: 100%;
+                 max-width: 1500px;
+                 height: 650px;
+                 margin: 65px auto 50px auto; /* Original margins restored */
+                 object-fit: cover;
+                 border-radius: 15px;
+                 box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+                 background-color: #000;">
+          <source src="./files/videoeth.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+
+
+      <div class="container text text-light py-5 text-overlay" data-aos="fade-right"> 
         <h1 class="headline text">
           Build <span class="text-info">trust</span>  <br>
         </h1>
@@ -74,11 +122,7 @@
         </div>
         
       </div>
-      <!-- end of container -->
-    </section>
-    <!-- end of home -->
-
-    <!-- Information -->
+      </section>
     <section class="information">
       <div class="container-fluid">
         <div class="row text-light">
@@ -106,11 +150,7 @@
           </div>
         </div>
       </div>
-      <!-- end of container -->
-    </section>
-    <!-- end of information -->
-
-    <!-- About -->
+      </section>
     <section id="about" class="about d-flex align-items-center text-light py-5  " >
       <div class="container">
         <div class="row d-flex align-items-center">
@@ -144,13 +184,8 @@
             />
           </div>
         </div>
-        <!-- end of row -->
-      </div>
-      <!-- end of container -->
-    </section>
-    <!-- end of about -->
-
-    <!-- Work -->
+        </div>
+      </section>
     <section id="ourwork"  class="work d-flex align-items-center py-5">
       <div class="container text-light">
         <div class="row">
@@ -163,9 +198,7 @@
                 <p class="main-header-section">OUR WORK</p>
                 <h2 class="py-2">Explore unlimited possibilities</h2>
                 <p class="para-light">
-                  Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                  Dignissimos dicta mollitia totam explicabo obcaecati quia
-                  laudantium repudiandae.
+                 Generate, verify, and trust certificates like never before — powered by blockchain for complete transparency and security.
                 </p>
               </div>
               <div class="container" data-aos="fade-up">
@@ -192,7 +225,7 @@
                     >
                       1
                     </h2>
-                    <p>VERIFIED CIRTIFACATES</p>
+                    <p>VERIFIED CERTIFICATES</p>
                   </div>
                   <div class="col-6">
                     <i class="fas fa-users fa-2x"></i>
@@ -220,24 +253,13 @@
                   </div>
                 </div>
               </div>
-              <!-- end of container -->
+              </div>
             </div>
-            <!-- end of row -->
           </div>
-          <!-- end of col-lg-5 -->
         </div>
-        <!-- end of row -->
-      </div>
-      <!-- end of container -->
-    </section>
-    <!-- end of work -->
-
-    <!-- Samples -->
-<section class="samples text-light">
+      </section>
+    <section class="samples text-light">
 </section>
-    <!-- end of Samples -->
-
-<!-- Footer -->
     <footer class="footer-dark">
       <div class="container">
         <div class="row">
@@ -260,7 +282,6 @@
             <h3  data-aos="fade-right"> 
                <i class="fa-brands fa-ethereum"></i>
               CertiFlex</h3>
-            <!-- <a href="https://www.flaticon.com/free-icons/blockchain" title="blockchain icons">Blockchain icons created by photo3idea_studio - Flaticon</a> -->
             <p  data-aos="zoom-in">
               The Certiflex platform is a leading Certificate Verification platform
               designed to bring efficiency and security to your operations. 
@@ -277,8 +298,7 @@
       </div>
 
     </footer>
-<!-- End Footer -->    
-    <div >
+<div >
       <i onclick="topFunction()" id="scroll-btn" class="fa-solid fa-angle-up"></i>
     </div>
     <div><a href="mailto:xyx@gmail.com?subject=From Certiflex Site"> 
@@ -288,14 +308,9 @@
     src="https://code.jquery.com/jquery-3.6.0.js"
     integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
     crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>    <!-- Bootstrap framework -->
-    <script src="./js/purecounter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>    <script src="./js/purecounter.min.js"></script>
     <script src="./js/aos.js"></script>
     <script src="./js/script.js"></script>
-    <!-- <script defer>changeBackground();</script> -->
-    <!-- <div class="butterfly">
-    </div> -->
-
     <script defer>
       // const butterfly = document.querySelector(".butter");
       //   setInterval(()=>{
