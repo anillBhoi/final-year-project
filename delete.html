@@ -88,18 +88,17 @@
           </div>
         
           <div data-aos="zoom-in" class="col-lg-6 py-3 data-upload my-3 mx-md-2">
-            <input onchange="get_Sha3()"  id="doc-file" type="file"/>
+            <input type="file" id="doc-file" onchange="validateDeleteFile()"/>
             
-            <span id="note" class="text-danger"
-              ></span
-            >
+            <span id="note" class="text-danger"></span>
             <img id="loader" class="d-none" src="files/loader.svg" alt="loader">
             <input
-            onclick="deleteHash()"
-              class="btn  upload-button main-button"
+              onclick="deleteDocument()"
+              class="btn btn-danger delete-button main-button"
               type="submit"
-              value="Delete document"
-              id="upload_file_button"
+              value="Delete Document"
+              id="delete-button"
+              disabled
             />
           </div>
           
@@ -157,6 +156,7 @@
     </a>
     <script src="./js/aos.js"></script>
     <script src="./js/script.js"></script>
+    <script src="./js/delete.js"></script>
     <script
     src="https://code.jquery.com/jquery-3.6.0.js"
     integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
