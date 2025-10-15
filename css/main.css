@@ -135,7 +135,10 @@ button {
 }
 body {
   position: relative;
-  background: linear-gradient(to right,var(--second-color), var(--main-color));
+background: linear-gradient(135deg, #000000, #121212, #2b2b2b, #494949, #666666);
+
+
+
   overflow-x: hidden;
 }
 .navbar-dark {
