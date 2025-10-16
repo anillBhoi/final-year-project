@@ -701,28 +701,36 @@ async function testTransactionSimulation(address, info) {
 function get_Sha3() {
   hide_txInfo()
   $('#note').html(`<h5 class="text-warning">Hashing Your Document 😴...</h5>`)
-
   $('#upload_file_button').attr('disabled', false)
 
-  console.log('file changed')
-
-  var file = document.getElementById('doc-file').files[0]
-  if (file) {
-    var reader = new FileReader()
-    reader.readAsText(file, 'UTF-8')
+  const file = document.getElementById('doc-file').files[0]
+  if (!file) {
+    window.hashedfile = null
+    return
+  }
+  try {
+    const reader = new FileReader()
+    reader.readAsArrayBuffer(file)
     reader.onload = function (evt) {
-      // var SHA256 = new Hashes.SHA256();
-      // = SHA256.hex(evt.target.result);
-      window.hashedfile = web3.utils.soliditySha3(evt.target.result)
-      console.log(`Document Hash : ${window.hashedfile}`)
-      $('#note').html(
-        `<h5 class="text-center text-info">Document Hashed  😎 </h5>`,
-      )
+      try {
+        const bytes = new Uint8Array(evt.target.result)
+        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+        window.hashedfile = web3.utils.soliditySha3('0x' + hex)
+        console.log(`Document Hash : ${window.hashedfile}`)
+        $('#note').html(`<h5 class="text-center text-info">Document Hashed  😎 </h5>`)
+      } catch (e) {
+        console.log('hash error', e)
+        $('#note').html(`<h5 class="text-center text-danger">Hashing failed</h5>`)
+        window.hashedfile = null
+      }
     }
-    reader.onerror = function (evt) {
+    reader.onerror = function () {
       console.log('error reading file')
+      $('#note').html(`<h5 class="text-center text-danger">File read error</h5>`)
+      window.hashedfile = null
     }
-  } else {
+  } catch (e) {
+    console.log('reader setup error', e)
     window.hashedfile = null
   }
 }
@@ -1211,7 +1219,7 @@ async function generateAndUploadCertificate() {
       return
     }
 
-    // Convert to PNG Blob
+    // Convert to PNG Blob (this exact blob will be used for IPFS, hashing, and download)
     const dataUrl = canvas.toDataURL('image/png')
     const pngBlob = await (await fetch(dataUrl)).blob()
 
@@ -1220,6 +1228,8 @@ async function generateAndUploadCertificate() {
     const hexString = Array.from(new Uint8Array(arrayBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
     const certHash = web3.utils.soliditySha3('0x' + hexString)
     window.hashedfile = certHash
+    // Keep the exact blob around for a byte-identical download
+    window.latestCert = { blob: pngBlob, hash: certHash }
 
     // Pre-flight checks to avoid generic JSON-RPC errors
     const onWrongNet = await validateNetwork()
@@ -1299,17 +1309,15 @@ async function generateAndUploadCertificate() {
             try { showToast('Certificate generated and uploaded successfully.','success') } catch(e){}
             // Offer local download without page reload
             try {
-              const canvasEl = document.getElementById('cert-canvas')
-              if (canvasEl) {
-                const url = canvasEl.toDataURL('image/png')
-                const a = document.createElement('a')
-                const name = (document.getElementById('cert-student')||{}).value || 'certificate'
-                a.href = url
-                a.download = `${name.replace(/\s+/g,'_')}.png`
-                document.body.appendChild(a)
-                a.click()
-                a.remove()
-              }
+              const a = document.createElement('a')
+              const name = (document.getElementById('cert-student')||{}).value || 'certificate'
+              const url = URL.createObjectURL(window.latestCert.blob)
+              a.href = url
+              a.download = `${name.replace(/\s+/g,'_')}.png`
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+              setTimeout(() => { try { URL.revokeObjectURL(url) } catch(e){} }, 1000)
             } catch(e){}
           })
         break

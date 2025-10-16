@@ -1,7 +1,7 @@
 window.CONTRACT = {
   address: '0x149f99126Be306f53b9147A7B9f9b8c37039e3c3',
-  network: 'https://rpc.ankr.com/polygon_amoy',
-  explore: 'https://www.oklink.com/amoy',
+  network: 'https://polygon-amoy.drpc.org',
+  explore: 'https://amoy.polygonscan.com/',
   abi: [
     {
       "inputs": [
@@ -214,7 +214,7 @@ window.CONTRACT = {
     }
   ],
 }
-const web3 = new Web3(new Web3.providers.HttpProvider(window.CONTRACT.network))
+const web3 = new Web3(window.CONTRACT.network)
 const contract = new web3.eth.Contract(
   window.CONTRACT.abi,
   window.CONTRACT.address,
@@ -229,23 +229,26 @@ window.onload = async () => {
 
 async function verify_Hash() {
   $('#loader').show()
-  if (window.hashedfile) {
-    /*   I used the contract address as the caller of the function 'findDocHash'
-        you can use any address because it used just for reading info from the contract
-    */
-    await contract.methods
+  if (!window.hashedfile) return
+  try {
+    const result = await contract.methods
       .findDocHash(window.hashedfile)
-      .call({ from: window.userAddress})
-      .then((result) => {
-        console.log(result)
-        $('.transaction-status').removeClass('d-none')
-        window.newHash = result
-        if ((result[0] != 0) & (result[1] != 0)) {
-          print_info(result, true)
-        } else {
-          print_info(result, false)
-        }
-      })
+      .call({ from: window.userAddress })
+    console.log(result)
+    $('.transaction-status').removeClass('d-none')
+    window.newHash = result
+    if ((result[0] != 0) & (result[1] != 0)) {
+      print_info(result, true)
+    } else {
+      print_info(result, false)
+    }
+  } catch (e) {
+    console.log('verify error', e)
+    $('#loader').hide()
+    $('#doc-status').html(`<h3 class="text-danger">Network error: ${
+      (e && e.message) || 'Failed to query blockchain'
+    }</h3>`) 
+    $('.transaction-status').removeClass('d-none')
   }
 }
 
@@ -261,25 +264,39 @@ function checkURL() {
 async function get_Sha3() {
   $('#note').html(`<h5 class="text-warning">Hashing Your Document 😴...</h5>`)
   $('#upload_file_button').attr('disabled', false)
-  console.log('file changed')
-  var file = await document.getElementById('doc-file').files[0]
-  if (file) {
-    var reader = new FileReader()
-    reader.readAsText(file, 'UTF-8')
+  const file = document.getElementById('doc-file').files[0]
+  if (!file) {
+    window.hashedfile = null
+    return false
+  }
+
+  try {
+    const reader = new FileReader()
+    reader.readAsArrayBuffer(file)
     reader.onload = async function (evt) {
-      // var SHA256 = new Hashes.SHA256();
-      // = SHA256.hex(evt.target.result);
-      window.hashedfile = await web3.utils.soliditySha3(evt.target.result)
-      console.log(`Document Hash : ${window.hashedfile}`)
-      $('#note').html(
-        `<h5 class="text-center text-info">Document Hashed  😎 </h5>`,
-      )
+      try {
+        const buffer = new Uint8Array(evt.target.result)
+        const hex = Array.from(buffer)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
+        window.hashedfile = await web3.utils.soliditySha3('0x' + hex)
+        console.log(`Document Hash (bytes): ${window.hashedfile}`)
+        $('#note').html(
+          `<h5 class="text-center text-info">Document Hashed  😎 </h5>`,
+        )
+      } catch (e) {
+        console.log('hashing error', e)
+        $('#note').html(`<h5 class="text-center text-danger">Hashing failed</h5>`)
+        window.hashedfile = null
+      }
     }
-    reader.onerror = function (evt) {
+    reader.onerror = function () {
       console.log('error reading file')
-      return false
+      $('#note').html(`<h5 class="text-center text-danger">File read error</h5>`)
+      window.hashedfile = null
     }
-  } else {
+  } catch (e) {
+    console.log('reader setup error', e)
     window.hashedfile = null
     return false
   }
