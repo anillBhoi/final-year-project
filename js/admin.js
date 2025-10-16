@@ -28,6 +28,11 @@ async function addExporter() {
     const isNetworkValid = await validateNetwork()
     if (!isNetworkValid) return
 
+    // Basic address format validation
+    if (!window.web3.utils.isAddress(address)) {
+      throw new Error('Invalid Ethereum address format')
+    }
+
     $('#loader').removeClass('d-none')
     $('#ExporterBtn').slideUp()
     $('#edit').slideUp()
@@ -40,10 +45,32 @@ async function addExporter() {
       throw new Error('Only contract owner can add exporters')
     }
 
+    // Preflight: estimate gas to surface revert reasons before prompting wallet
+    let gas = undefined
+    let gasPrice = undefined
+    try {
+      gas = await window.contract.methods
+        .add_Exporter(address, info)
+        .estimateGas({ from: window.userAddress })
+      gas = Math.floor(gas * 1.2) // 20% buffer
+      gasPrice = await window.web3.eth.getGasPrice()
+    } catch (e) {
+      let friendly = 'Transaction would fail. '
+      const msg = (e && e.message) || ''
+      if (msg.includes('only owner') || msg.toLowerCase().includes('owner')) friendly += 'Only the contract owner can add exporters.'
+      else if (msg.toLowerCase().includes('invalid address')) friendly += 'The exporter address is invalid.'
+      else if (msg.toLowerCase().includes('revert')) friendly += msg
+      else friendly += 'Please check inputs and network.'
+      $('#note').html(`<h5 class="text-danger">${friendly}</h5>`)
+      $('#loader').addClass('d-none')
+      $('#ExporterBtn').slideDown(); $('#edit').slideDown(); $('#delete').slideDown()
+      return
+    }
+
     // Add the exporter (matches ABI add_Exporter)
     await window.contract.methods
       .add_Exporter(address, info)
-      .send({ from: window.userAddress })
+      .send({ from: window.userAddress, gas, gasPrice })
       .on('transactionHash', function(hash) {
         $('#note').html(`<h5 class="text-info">Please wait for transaction to be mined...</h5>`)
       })
@@ -60,7 +87,12 @@ async function addExporter() {
         document.getElementById('info').value = ''
       })
       .on('error', function(error) {
-        throw error
+        // Provide friendlier messaging for common -32603 internal errors
+        let msg = error && error.message ? error.message : 'Transaction failed'
+        if (msg.includes('Internal JSON-RPC error') || error.code === -32603) {
+          msg = 'RPC error while sending transaction. Ensure you are on Polygon Amoy, have MATIC for gas, and try again.'
+        }
+        throw new Error(msg)
       })
 
   } catch (error) {
@@ -250,12 +282,16 @@ async function applyAdminUI() {
     buttons.forEach(id => {
       const button = document.getElementById(id)
       if (button) {
+        // Always show the buttons; disable when not owner
+        button.style.display = 'inline-block'
         if (isOwner) {
           button.removeAttribute('disabled')
-          button.style.display = 'inline-block'
+          button.removeAttribute('title')
+          button.setAttribute('aria-disabled', 'false')
         } else {
           button.setAttribute('disabled', 'true')
-          button.style.display = 'none'
+          button.setAttribute('aria-disabled', 'true')
+          button.title = 'Only contract owner can perform this action'
         }
       }
     })
@@ -263,6 +299,8 @@ async function applyAdminUI() {
     // Update admin indicator in wallet status
     if (isOwner) {
       $('#network').after(`<span class="p-1 text-success">Role: Contract Owner</span>`)
+    } else {
+      $('#network').after(`<span class="p-1 text-muted">Role: Viewer</span>`)
     }
 
     // Check if user is an exporter by trying to get their info
