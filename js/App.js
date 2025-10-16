@@ -1462,6 +1462,24 @@ function printTransactions(data) {
     num.style =
       'position:absolute; left:4px; bottom: -20px;font-size:4rem; color: rgba(20, 63, 74, 0.35);'
     a.appendChild(num)
+
+    // Download button overlay (uses cached dataURL when available)
+    const dl = document.createElement('a')
+    dl.className = 'btn btn-sm btn-primary'
+    dl.style = 'position:absolute;right:8px;bottom:8px;z-index:3'
+    dl.title = 'Download certificate'
+    dl.innerHTML = '<i class="fa fa-download"></i>'
+    let downloadUrl = null
+    try {
+      downloadUrl = window.localStorage.getItem('cert_preview_' + cid)
+    } catch(e) {}
+    if (!downloadUrl) {
+      downloadUrl = gateways[0] + cid
+    }
+    dl.href = downloadUrl
+    dl.setAttribute('download', `certificate_${i+1}.png`)
+    dl.addEventListener('click', (e) => { e.stopPropagation() })
+    a.appendChild(dl)
     main.prepend(a)
   }
 }
