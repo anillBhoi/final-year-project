@@ -1259,6 +1259,7 @@ async function generateAndUploadCertificate() {
     try {
       const cid = await ipfsAddWithRetry(pngBlob, 3)
       window.ipfsCid = cid
+      try { window.localStorage.setItem('cert_preview_' + cid, dataUrl) } catch(e){}
     } catch (e) {
       $('#note').html(`<h5 class="text-danger">IPFS upload failed: ${e.message || e}</h5>`)
       return
@@ -1400,10 +1401,37 @@ function printTransactions(data) {
     a.setAttribute('target', '_blank')
     a.className =
       'col-lg-3 col-md-4 col-sm-5 m-2  bg-dark text-light rounded position-relative card'
-    a.style = 'overflow:hidden;'
-    const image = document.createElement('object')
-    image.style = 'width:100%;height: 100%;'
-    image.data = `https://ipfs.io/ipfs/${data[i].returnValues[1]}`
+    a.style = 'overflow:hidden;height:180px;'
+    // Use an <img> for broader compatibility than <object>
+    const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
+    image.alt = 'Certificate preview'
+    image.style = 'width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .2s ease;'
+    const cid = data[i].returnValues[1]
+    const gateways = [
+      'https://ipfs.io/ipfs/',
+      'https://dweb.link/ipfs/',
+      'https://gateway.pinata.cloud/ipfs/'
+    ]
+    let idx = 0
+    // Prefer locally cached dataURL preview first if available (instant display)
+    try {
+      const cached = window.localStorage.getItem('cert_preview_' + cid)
+      if (cached) {
+        image.src = cached
+        image.style.opacity = '1'
+      } else {
+        image.src = gateways[idx] + cid
+      }
+    } catch(e) {
+      image.src = gateways[idx] + cid
+    }
+    image.onload = () => { image.style.opacity = '1' }
+    image.onerror = () => {
+      idx = (idx + 1) % gateways.length
+      image.src = gateways[idx] + cid
+    }
     const num = document.createElement('h1')
     num.append(document.createTextNode(i + 1))
     a.appendChild(image)
