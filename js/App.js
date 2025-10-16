@@ -1002,6 +1002,24 @@ function applyRoleUI() {
 }
 
 // Certificate rendering utilities
+// Helpers for draggable text positions (stored per address)
+function getPos(key, defX, defY) {
+  try {
+    const addr = (window.userAddress || '')
+    const raw = window.localStorage.getItem('cert_pos_' + key + '_' + addr)
+    if (!raw) return { x: defX, y: defY }
+    const obj = JSON.parse(raw)
+    if (typeof obj.x === 'number' && typeof obj.y === 'number') return obj
+  } catch (e) {}
+  return { x: defX, y: defY }
+}
+function setPos(key, x, y) {
+  try {
+    const addr = (window.userAddress || '')
+    window.localStorage.setItem('cert_pos_' + key + '_' + addr, JSON.stringify({ x, y }))
+  } catch (e) {}
+}
+
 function drawCertificateToCanvas(fields) {
   const canvas = document.getElementById('cert-canvas')
   if (!canvas) return null
@@ -1011,68 +1029,106 @@ function drawCertificateToCanvas(fields) {
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Helper to render foreground text layers (always drawn after template)
-  const renderForeground = () => {
-  // border
-  ctx.strokeStyle = '#0c5c75'
-  ctx.lineWidth = 10
-  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
+  const renderForeground = (overlayDisabled) => {
+  // Decorative border (hidden when overlay disabled)
+  if (!overlayDisabled) {
+    ctx.strokeStyle = '#0c5c75'
+    ctx.lineWidth = 10
+    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40)
+  }
 
-  // heading
+  // Heading (hidden when overlay disabled)
     const fontFamily = (document.getElementById('cert-font')||{}).value || 'Arial'
-  ctx.fillStyle = '#143f4a'
-    ctx.font = `bold 42px ${fontFamily}`
-  ctx.textAlign = 'center'
-  ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 120)
+  if (!overlayDisabled) {
+    ctx.fillStyle = '#143f4a'
+      ctx.font = `bold 42px ${fontFamily}`
+    ctx.textAlign = 'center'
+    ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 120)
+  }
 
-  // issuer
+  // issuer (draggable and without label when overlay disabled)
   const issuerText = fields.issuer && fields.issuer.trim().length ? fields.issuer : (window.info || 'Authorised Exporter')
     ctx.font = `20px ${fontFamily}`
   ctx.fillStyle = '#555'
-  ctx.fillText(`Issued by: ${issuerText}`, canvas.width / 2, 160)
+    if (overlayDisabled) {
+      const p = getPos('issuer', canvas.width / 2 - 180, 160)
+      ctx.textAlign = 'left'
+      ctx.fillText(`${issuerText}`, p.x, p.y)
+    } else {
+      ctx.textAlign = 'center'
+      ctx.fillText(`Issued by: ${issuerText}`, canvas.width / 2, 160)
+    }
 
   // student name
     const color = (document.getElementById('cert-color')||{}).value || '#111'
     ctx.font = `bold 48px ${fontFamily}`
     ctx.fillStyle = color
-  ctx.fillText(fields.student || 'Student Name', canvas.width / 2, 260)
+    if (overlayDisabled) {
+      const p = getPos('student', canvas.width / 2 - 180, 260)
+      ctx.textAlign = 'left'
+      ctx.fillText(fields.student || 'Student Name', p.x, p.y)
+    } else {
+      ctx.textAlign = 'center'
+      ctx.fillText(fields.student || 'Student Name', canvas.width / 2, 260)
+    }
 
   // course
     ctx.font = `28px ${fontFamily}`
   ctx.fillStyle = '#222'
-    const alignSel = (document.getElementById('cert-align')||{}).value || 'center'
-    ctx.textAlign = alignSel
-    const x = alignSel==='left'? 100: alignSel==='right'? canvas.width-100: canvas.width/2
-    ctx.fillText(`For: ${fields.course || 'Course/Program'}`, x, 320)
+    if (overlayDisabled) {
+      const p = getPos('course', canvas.width / 2 - 180, 320)
+      ctx.textAlign = 'left'
+      ctx.fillText(`For: ${fields.course || 'Course/Program'}`, p.x, p.y)
+    } else {
+      const alignSel = (document.getElementById('cert-align')||{}).value || 'center'
+      ctx.textAlign = alignSel
+      const x = alignSel==='left'? 100: alignSel==='right'? canvas.width-100: canvas.width/2
+      ctx.fillText(`For: ${fields.course || 'Course/Program'}`, x, 320)
+    }
 
-  // grade and date
+  // grade and date (date draggable and without label when overlay disabled)
     ctx.font = `22px ${fontFamily}`
   ctx.fillStyle = '#333'
-    ctx.textAlign = 'center'
-  ctx.fillText(`Grade: ${fields.grade || 'N/A'}`, canvas.width / 2, 370)
-  ctx.fillText(`Date: ${fields.date || new Date().toISOString().slice(0,10)}`, canvas.width / 2, 410)
+    if (overlayDisabled) {
+      ctx.textAlign = 'left'
+      const p1 = getPos('grade', canvas.width / 2 - 180, 370)
+      const p2 = getPos('date', canvas.width / 2 - 180, 410)
+      ctx.fillText(`Grade: ${fields.grade || 'N/A'}`, p1.x, p1.y)
+      ctx.fillText(`${fields.date || new Date().toISOString().slice(0,10)}`, p2.x, p2.y)
+    } else {
+      ctx.textAlign = 'center'
+      ctx.fillText(`Grade: ${fields.grade || 'N/A'}`, canvas.width / 2, 370)
+      ctx.fillText(`Date: ${fields.date || new Date().toISOString().slice(0,10)}`, canvas.width / 2, 410)
+    }
 
-  // footer note
-    ctx.font = `16px ${fontFamily}`
-  ctx.fillStyle = '#777'
-  ctx.fillText('Verify this certificate on-chain via the Verify page using its QR/Hash.', canvas.width / 2, 560)
+  // footer note (hidden when overlay disabled)
+  if (!overlayDisabled) {
+      ctx.font = `16px ${fontFamily}`
+    ctx.fillStyle = '#777'
+    ctx.fillText('Verify this certificate on-chain via the Verify page using its QR/Hash.', canvas.width / 2, 560)
+  }
   }
 
   // custom template background (draw first, then foreground in onload)
   try {
-    const tplDataUrl = window.localStorage.getItem('cert_template_'+(window.userAddress||''))
-    if (tplDataUrl) {
+    const addr = (window.userAddress||'')
+    const tplDataUrl = window.localStorage.getItem('cert_template_'+addr)
+    const isActive = window.localStorage.getItem('cert_template_active_'+addr) === 'true'
+    const disableOverlay = window.localStorage.getItem('cert_template_disableOverlay_'+addr) === 'true'
+    if (tplDataUrl && isActive) {
       const img = new Image()
       img.onload = () => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        renderForeground()
+        // Always render fields (student, course, grade, date). Decorative parts controlled by overlay flag.
+        renderForeground(disableOverlay)
       }
       img.src = tplDataUrl
       return canvas
     }
   } catch(e) {}
 
-  // No template → just draw foreground
-  renderForeground()
+  // No active template → draw full default foreground
+  renderForeground(false)
 
   return canvas
 }
@@ -1394,6 +1450,43 @@ window.addEventListener('load', () => {
     const tplFile = document.getElementById('tpl-file')
     const btnApplyTemplate = document.getElementById('btn-apply-template')
     const btnClearTemplate = document.getElementById('btn-clear-template')
+    const canvas = document.getElementById('cert-canvas')
+
+    // THEME MANAGEMENT HELPERS (classes, styles, storage)
+    function removeThemeClasses(el){
+      try {
+        if (!el || !el.classList) return
+        const toRemove = []
+        el.classList.forEach(c => { if (c.indexOf('theme-') === 0) toRemove.push(c) })
+        toRemove.forEach(c => el.classList.remove(c))
+      } catch(e){}
+    }
+    function clearExistingThemeStorage(addr){
+      try {
+        window.localStorage.removeItem('cert_template_' + addr)
+        window.localStorage.removeItem('cert_template_active_' + addr)
+        window.localStorage.removeItem('cert_template_disableOverlay_' + addr)
+        ;['student','course','grade','date'].forEach(k => {
+          try { window.localStorage.removeItem('cert_pos_' + k + '_' + addr) } catch(e){}
+        })
+      } catch(e){}
+    }
+    function clearExistingThemeUI(){
+      try {
+        // Remove theme-* classes from root, body, and main containers
+        removeThemeClasses(document.documentElement)
+        removeThemeClasses(document.body)
+        const containers = document.querySelectorAll('.data-upload, .container, .home, .work')
+        containers.forEach(removeThemeClasses)
+        // Clear inline theme styles
+        const themed = document.querySelectorAll('[data-theme-inline="true"]')
+        themed.forEach(el => { el.removeAttribute('style'); el.removeAttribute('data-theme-inline') })
+      } catch(e){}
+    }
+
+    const addr = (window.userAddress || '')
+    // On every fresh visit, start with default theme (do not auto-apply any saved theme)
+    try { window.localStorage.removeItem('cert_template_active_' + addr) } catch(e){}
 
     const storeTemplate = async (file) => {
       if (!file) return
@@ -1404,7 +1497,25 @@ window.addEventListener('load', () => {
         reader.onload = () => resolve(reader.result)
         reader.readAsDataURL(blob)
       })
-      window.localStorage.setItem('cert_template_' + (window.userAddress || ''), dataUrl)
+      // Hard-replace any previous theme (classes, styles, storage)
+      clearExistingThemeUI()
+      clearExistingThemeStorage(addr)
+      window.localStorage.setItem('cert_template_' + addr, dataUrl)
+      // When a template is explicitly applied, disable default overlay so only the theme image shows
+      window.localStorage.setItem('cert_template_disableOverlay_' + addr, 'true')
+      // Activate this template for rendering
+      window.localStorage.setItem('cert_template_active_' + addr, 'true')
+      // Reset any custom positions if switching themes
+      ;['student','course','grade','date'].forEach(k => {
+        try { window.localStorage.removeItem('cert_pos_' + k + '_' + addr) } catch(e){}
+      })
+      // Apply only new theme classes (optional convention)
+      document.body.classList.add('theme-active','theme-custom')
+      // Example of applying inline theme color variables if needed
+      try {
+        document.documentElement.style.setProperty('--theme-accent', '#143f4a')
+        document.documentElement.dataset.themeInline = 'true'
+      } catch(e){}
       previewCertificate()
     }
 
@@ -1417,13 +1528,104 @@ window.addEventListener('load', () => {
     }
     if (btnClearTemplate) {
       btnClearTemplate.addEventListener('click', () => {
-        window.localStorage.removeItem('cert_template_' + (window.userAddress || ''))
+        const addr = (window.userAddress || '')
+        clearExistingThemeUI()
+        clearExistingThemeStorage(addr)
         previewCertificate()
       })
     }
 
-    // Auto-preview on load if a template is already saved
+    // Always show default on load
     setTimeout(() => { try { previewCertificate() } catch(e){} }, 0)
+
+    // Enable drag of fields when a template is active
+    try {
+      let draggingKey = null
+      let offsetX = 0, offsetY = 0
+
+      function getActiveFlag() {
+        const addr = (window.userAddress || '')
+        return window.localStorage.getItem('cert_template_active_' + addr) === 'true'
+      }
+
+      function hitTest(mx, my) {
+        // Build objects with current positions and measure widths
+        const addr = (window.userAddress || '')
+        const isActive = window.localStorage.getItem('cert_template_active_' + addr) === 'true'
+        if (!isActive) return null
+        const ctx = canvas.getContext('2d')
+        const fontFamily = (document.getElementById('cert-font')||{}).value || 'Arial'
+        const color = (document.getElementById('cert-color')||{}).value || '#111'
+        const fields = getCertificateFields()
+        const objs = []
+        // student
+        ctx.font = `bold 48px ${fontFamily}`
+        const pS = getPos('student', canvas.width/2 - 180, 260)
+        objs.push({ key:'student', x:pS.x, y:pS.y, w: ctx.measureText(fields.student||'Student Name').width, h: 54 })
+        // course
+        ctx.font = `28px ${fontFamily}`
+        const pC = getPos('course', canvas.width/2 - 180, 320)
+        objs.push({ key:'course', x:pC.x, y:pC.y, w: ctx.measureText('For: ' + (fields.course||'Course/Program')).width, h: 32 })
+        // issuer
+        ctx.font = `20px ${fontFamily}`
+        const issuerText = fields.issuer && fields.issuer.trim().length ? fields.issuer : (window.info || 'Authorised Exporter')
+        const pI = getPos('issuer', canvas.width/2 - 180, 160)
+        objs.push({ key:'issuer', x:pI.x, y:pI.y, w: ctx.measureText(issuerText).width, h: 26 })
+        // grade
+        ctx.font = `22px ${fontFamily}`
+        const pG = getPos('grade', canvas.width/2 - 180, 370)
+        objs.push({ key:'grade', x:pG.x, y:pG.y, w: ctx.measureText('Grade: ' + (fields.grade||'N/A')).width, h: 26 })
+        // date
+        const pD = getPos('date', canvas.width/2 - 180, 410)
+        objs.push({ key:'date', x:pD.x, y:pD.y, w: ctx.measureText((fields.date||new Date().toISOString().slice(0,10))).width, h: 26 })
+
+        // simple bbox around baseline
+        for (let i=objs.length-1; i>=0; i--) {
+          const o = objs[i]
+          const left = o.x
+          const top = o.y - o.h + 6
+          if (mx >= left && mx <= left + o.w && my >= top && my <= top + o.h) {
+            return { key: o.key, x: o.x, y: o.y }
+          }
+        }
+        return null
+      }
+
+      function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect()
+        return {
+          x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+          y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+        }
+      }
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (!getActiveFlag()) return
+        const m = getMousePos(e)
+        const hit = hitTest(m.x, m.y)
+        if (hit) {
+          draggingKey = hit.key
+          offsetX = m.x - hit.x
+          offsetY = m.y - hit.y
+        }
+      })
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!getActiveFlag()) return
+        if (!draggingKey) return
+        const m = getMousePos(e)
+        const nx = m.x - offsetX
+        const ny = m.y - offsetY
+        setPos(draggingKey, nx, ny)
+        previewCertificate()
+      })
+
+      window.addEventListener('mouseup', () => {
+        draggingKey = null
+      })
+    } catch (e) {
+      console.log('Drag init error:', e)
+    }
 
     // Download button
     const dlBtn = document.getElementById('download-cert')
