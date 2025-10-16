@@ -160,7 +160,7 @@ background: linear-gradient(135deg, #000000, #121212, #2b2b2b, #494949, #666666)
 .home .text-light {
   z-index: 2;
 }
-.home video {
+.home .video {
   position: absolute;
   z-index: 0;
   object-fit: cover;

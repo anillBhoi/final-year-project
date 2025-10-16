@@ -250,12 +250,16 @@ async function applyAdminUI() {
     buttons.forEach(id => {
       const button = document.getElementById(id)
       if (button) {
+        // Always show the buttons; disable when not owner
+        button.style.display = 'inline-block'
         if (isOwner) {
           button.removeAttribute('disabled')
-          button.style.display = 'inline-block'
+          button.removeAttribute('title')
+          button.setAttribute('aria-disabled', 'false')
         } else {
           button.setAttribute('disabled', 'true')
-          button.style.display = 'none'
+          button.setAttribute('aria-disabled', 'true')
+          button.title = 'Only contract owner can perform this action'
         }
       }
     })
@@ -263,6 +267,8 @@ async function applyAdminUI() {
     // Update admin indicator in wallet status
     if (isOwner) {
       $('#network').after(`<span class="p-1 text-success">Role: Contract Owner</span>`)
+    } else {
+      $('#network').after(`<span class="p-1 text-muted">Role: Viewer</span>`)
     }
 
     // Check if user is an exporter by trying to get their info
