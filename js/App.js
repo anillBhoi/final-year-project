@@ -1091,6 +1091,53 @@ function previewCertificate() {
   drawCertificateToCanvas(fields)
 }
 
+// IPFS helpers to reduce failures with preload endpoints and add retries
+async function createIpfsClient() {
+  try {
+    // In-browser IPFS node; disable preload to avoid external calls that may fail
+    return await Ipfs.create({
+      repo: 'cert-' + Math.random(),
+      preload: { enabled: false },
+      start: true,
+    })
+  } catch (e) {
+    // Fallback: try HTTP client endpoints if available in environment
+    try {
+      const endpoints = [
+        'https://ipfs.infura.io:5001/api/v0',
+        'https://dweb.link/api/v0',
+        'https://node0.preload.ipfs.io/api/v0',
+      ]
+      for (const url of endpoints) {
+        try {
+          if (window.IpfsHttpClient && window.IpfsHttpClient.create) {
+            const client = window.IpfsHttpClient.create({ url })
+            return client
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    throw e
+  }
+}
+
+async function ipfsAddWithRetry(data, attempts = 3) {
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const node = await createIpfsClient()
+      const res = await node.add(data)
+      const cid = res && (res.path || (res.cid && res.cid.toString && res.cid.toString()))
+      if (!cid) throw new Error('Empty IPFS response')
+      return cid
+    } catch (e) {
+      lastErr = e
+      await new Promise(r => setTimeout(r, (i + 1) * 1500))
+    }
+  }
+  throw lastErr
+}
+
 async function generateAndUploadCertificate() {
   try {
     // Debounce: disable the button immediately to prevent double clicks
@@ -1140,19 +1187,27 @@ async function generateAndUploadCertificate() {
       }
     } catch (e) {}
 
-    // Upload to IPFS
+    // Upload to IPFS with retry and preload disabled
     $('#loader').removeClass('d-none')
     $('#note').html(`<h5 class="text-info">Uploading certificate to IPFS...</h5>`)
-    const node = await Ipfs.create({ repo: 'cert-' + Math.random() })
-    const { path: cid } = await node.add(pngBlob)
-    window.ipfsCid = cid
+    try {
+      const cid = await ipfsAddWithRetry(pngBlob, 3)
+      window.ipfsCid = cid
+    } catch (e) {
+      $('#note').html(`<h5 class="text-danger">IPFS upload failed: ${e.message || e}</h5>`)
+      return
+    }
 
     // Store hash + CID on-chain
     $('#note').html(`<h5 class="text-info">Please confirm the blockchain transaction...</h5>`)
 
     // Gas estimate first, to surface revert reason before prompting wallet
+    let gas;
+    let gasPrice;
     try {
-      await window.contract.methods.addDocHash(window.hashedfile, window.ipfsCid).estimateGas({ from: window.userAddress })
+      gas = await window.contract.methods.addDocHash(window.hashedfile, window.ipfsCid).estimateGas({ from: window.userAddress })
+      gas = Math.floor(gas * 1.2)
+      gasPrice = await window.web3.eth.getGasPrice()
     } catch (e) {
       let friendly = 'Transaction would fail. '
       const msg = (e && e.message) || ''
@@ -1169,37 +1224,54 @@ async function generateAndUploadCertificate() {
       return
     }
 
-    await window.contract.methods
-      .addDocHash(window.hashedfile, window.ipfsCid)
-      .send({ from: window.userAddress })
-      .on('transactionHash', function (_hash) {
-        $('#note').html(`<h5 class="text-info p-1 text-center">Waiting for confirmation...</h5>`) 
-        try { showToast('Transaction sent. Waiting for confirmation…','info') } catch(e){}
-      })
-      .on('receipt', function (receipt) {
-        printUploadInfo(receipt)
-        generateQRCode()
-        $('#note').html(`<h5 class="text-success">Certificate published successfully.</h5>`)
-        try { showToast('Certificate generated and uploaded successfully.','success') } catch(e){}
-        // Offer local download without page reload
-        try {
-          const canvasEl = document.getElementById('cert-canvas')
-          if (canvasEl) {
-            const url = canvasEl.toDataURL('image/png')
-            const a = document.createElement('a')
-            const name = (document.getElementById('cert-student')||{}).value || 'certificate'
-            a.href = url
-            a.download = `${name.replace(/\s+/g,'_')}.png`
-            document.body.appendChild(a)
-            a.click()
-            a.remove()
-          }
-        } catch(e){}
-      })
-      .on('error', function (error) {
-        $('#note').html(`<h5 class="text-danger">${error.message}</h5>`)
-        try { showToast(error.message || 'Transaction failed','danger') } catch(e){}
-      })
+    // Send transaction with minimal retry on rate limiting
+    let attempts = 0
+    const maxAttempts = 3
+    while (attempts < maxAttempts) {
+      try {
+        await window.contract.methods
+          .addDocHash(window.hashedfile, window.ipfsCid)
+          .send({ from: window.userAddress, gas, gasPrice })
+          .on('transactionHash', function (_hash) {
+            $('#note').html(`<h5 class=\"text-info p-1 text-center\">Waiting for confirmation...</h5>`) 
+            try { showToast('Transaction sent. Waiting for confirmation…','info') } catch(e){}
+          })
+          .on('receipt', function (receipt) {
+            printUploadInfo(receipt)
+            generateQRCode()
+            $('#note').html(`<h5 class=\"text-success\">Certificate published successfully.</h5>`)
+            try { showToast('Certificate generated and uploaded successfully.','success') } catch(e){}
+            // Offer local download without page reload
+            try {
+              const canvasEl = document.getElementById('cert-canvas')
+              if (canvasEl) {
+                const url = canvasEl.toDataURL('image/png')
+                const a = document.createElement('a')
+                const name = (document.getElementById('cert-student')||{}).value || 'certificate'
+                a.href = url
+                a.download = `${name.replace(/\s+/g,'_')}.png`
+                document.body.appendChild(a)
+                a.click()
+                a.remove()
+              }
+            } catch(e){}
+          })
+        break
+      } catch (error) {
+        const msg = (error && error.message) || ''
+        const rateLimited = msg.toLowerCase().includes('rate limited') || error.code === -32603
+        if (rateLimited && attempts < maxAttempts - 1) {
+          const waitMs = (attempts + 1) * 3000
+          $('#note').html(`<h5 class=\"text-warning\">RPC is rate limiting. Retrying in ${waitMs/1000}s...</h5>`)
+          await new Promise(r => setTimeout(r, waitMs))
+          attempts++
+          continue
+        }
+        $('#note').html(`<h5 class=\"text-danger\">${msg || 'Transaction failed'}</h5>`)
+        try { showToast(msg || 'Transaction failed','danger') } catch(e){}
+        break
+      }
+    }
 
   } catch (e) {
     console.error(e)
