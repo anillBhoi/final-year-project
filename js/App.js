@@ -1054,31 +1054,49 @@ function drawCertificateToCanvas(fields) {
     ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 120)
   }
 
+  // toggle helpers
+  const getAnyChecked = (ids, defVal) => {
+    try {
+      for (const id of ids) {
+        const el = document.getElementById(id)
+        if (el && typeof el.checked === 'boolean') return !!el.checked
+      }
+    } catch (e) {}
+    return defVal
+  }
+  const showOrg = getAnyChecked(['fld-org','toggle-org','chk-org','show-org','org-toggle','orgNameToggle'], true)
+  const showHolder = getAnyChecked(['fld-holder','toggle-holder','chk-holder','show-holder','holder-toggle','holderNameToggle'], true)
+  const showTagline = getAnyChecked(['fld-tag','toggle-tagline','chk-tagline','show-tagline','tagline-toggle','taglineToggle'], true)
+
   // issuer (draggable and without label when overlay disabled)
-  const issuerText = fields.issuer && fields.issuer.trim().length ? fields.issuer : (window.info || 'Authorised Exporter')
-    ctx.font = `20px ${fontFamily}`
-  ctx.fillStyle = '#555'
-    if (overlayDisabled) {
-      const p = getPos('issuer', canvas.width / 2 - 180, 160)
-      ctx.textAlign = 'left'
-      ctx.fillText(`${issuerText}`, p.x, p.y)
-    } else {
-      ctx.textAlign = 'center'
-      ctx.fillText(`Issued by: ${issuerText}`, canvas.width / 2, 160)
-    }
+  if (showOrg) {
+    const issuerText = fields.issuer && fields.issuer.trim().length ? fields.issuer : (window.info || 'Authorised Exporter')
+      ctx.font = `20px ${fontFamily}`
+    ctx.fillStyle = '#555'
+      if (overlayDisabled) {
+        const p = getPos('issuer', canvas.width / 2 - 180, 160)
+        ctx.textAlign = 'left'
+        ctx.fillText(`${issuerText}`, p.x, p.y)
+      } else {
+        ctx.textAlign = 'center'
+        ctx.fillText(`Issued by: ${issuerText}`, canvas.width / 2, 160)
+      }
+  }
 
   // student name
-    const color = (document.getElementById('cert-color')||{}).value || '#111'
-    ctx.font = `bold 48px ${fontFamily}`
-    ctx.fillStyle = color
-    if (overlayDisabled) {
-      const p = getPos('student', canvas.width / 2 - 180, 260)
-      ctx.textAlign = 'left'
-      ctx.fillText(fields.student || 'Student Name', p.x, p.y)
-    } else {
-      ctx.textAlign = 'center'
-      ctx.fillText(fields.student || 'Student Name', canvas.width / 2, 260)
-    }
+  if (showHolder) {
+      const color = (document.getElementById('cert-color')||{}).value || '#111'
+      ctx.font = `bold 48px ${fontFamily}`
+      ctx.fillStyle = color
+      if (overlayDisabled) {
+        const p = getPos('student', canvas.width / 2 - 180, 260)
+        ctx.textAlign = 'left'
+        ctx.fillText(fields.student || 'Student Name', p.x, p.y)
+      } else {
+        ctx.textAlign = 'center'
+        ctx.fillText(fields.student || 'Student Name', canvas.width / 2, 260)
+      }
+  }
 
   // course
     ctx.font = `28px ${fontFamily}`
@@ -1109,8 +1127,8 @@ function drawCertificateToCanvas(fields) {
       ctx.fillText(`Date: ${fields.date || new Date().toISOString().slice(0,10)}`, canvas.width / 2, 410)
     }
 
-  // footer note (hidden when overlay disabled)
-  if (!overlayDisabled) {
+  // footer note (hidden when overlay disabled) – also controlled by checkbox
+  if (!overlayDisabled && showTagline) {
       ctx.font = `16px ${fontFamily}`
     ctx.fillStyle = '#777'
     ctx.fillText('Verify this certificate on-chain via the Verify page using its QR/Hash.', canvas.width / 2, 560)
@@ -1137,6 +1155,12 @@ function drawCertificateToCanvas(fields) {
 
   // No active template → draw full default foreground
   renderForeground(false)
+
+  // live update on checkbox toggles (bind once)
+  try {
+    const bind = (id) => { try { const el = document.getElementById(id); if (el && !el._certBound) { el.addEventListener('change', previewCertificate); el._certBound = true } } catch(e){} }
+    ;['fld-org','fld-holder','fld-tag'].forEach(bind)
+  } catch (e) {}
 
   return canvas
 }
