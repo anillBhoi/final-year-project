@@ -220,6 +220,10 @@ const contract = new web3.eth.Contract(
   window.CONTRACT.address,
 )
 
+// Images to show for verification states
+const SUCCESS_IMAGE = './files/securefiles.svg'
+const FAILURE_IMAGE = './files/notvalid.svg'
+
 window.onload = async () => {
   $('#loader').hide()
   $('.loader-wraper').fadeOut('slow')
@@ -304,7 +308,7 @@ async function get_Sha3() {
 
 function print_info(result, is_verified) {
   //Default Image for not Verified Docunets
-  document.getElementById('student-document').src = './files/notvalid.svg'
+  document.getElementById('student-document').src = FAILURE_IMAGE
   $('#loader').hide()
   // when document not verfied
   if (!is_verified) {
@@ -361,11 +365,9 @@ function print_info(result, is_verified) {
     $('#blockNumber').html(
       `<span class="text-info"><i class="fa-solid fa-cube"></i></span> ${result[0]}`,
     )
-    document.getElementById('student-document').src =
-      'https://ipfs.io/ipfs/' + result[3]
-    document.getElementById('download-document').href = document.getElementById(
-      'student-document',
-    ).src
+    // Show a success illustration; link button opens actual certificate on IPFS
+    document.getElementById('student-document').src = SUCCESS_IMAGE
+    document.getElementById('download-document').href = 'https://ipfs.io/ipfs/' + result[3]
     $('.transaction-status').show()
   }
 }
