@@ -305,7 +305,7 @@ async function applyAdminUI() {
 
     // Check if user is an exporter by trying to get their info
     try {
-      const exporterInfo = await window.contractRPC.methods.exporterInfo(window.userAddress).call()
+      const exporterInfo = await window.contractRPC.methods.getExporterInfo(window.userAddress).call()
       if (exporterInfo && exporterInfo !== '') {
         $('#network').after(`<span class="p-1 text-info">Role: Authorized Exporter</span>`)
       }

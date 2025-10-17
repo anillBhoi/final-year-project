@@ -284,7 +284,17 @@ window.onload = async () => {
       }" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-square-arrow-up-right text-warning"></i></a>  
        </a>`)
 
-      if (window.location.pathname == '/admin.html') await getCounters()
+      if (window.location.pathname == '/admin.html') {
+        try {
+          await getCounters()
+          // Also call admin.js applyAdminUI if it exists
+          if (typeof applyAdminUI === 'function') {
+            await applyAdminUI()
+          }
+        } catch(e) {
+          console.log('Admin page init error:', e)
+        }
+      }
 
       await getExporterInfo()
       applyRoleUI()
