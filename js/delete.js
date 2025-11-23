@@ -6,7 +6,7 @@ async function deleteDocument() {
     }
 
     try {
-        // Validate network and contract connection
+        // Validate network and contract econnection
         const isNetworkValid = await validateNetwork()
         if (!isNetworkValid) return
         if (!isNetworkValid) return

@@ -266,7 +266,7 @@ function checkURL() {
 }
 
 async function get_Sha3() {
-  $('#note').html(`<h5 class="text-warning">Hashing Your Document 😴...</h5>`)
+  $('#note').html(`<h5 class="text-warning">Hashing Your Document <span style="font-size: 20px; display: inline-block; animation: pulse 1.5s infinite;">😴</span>...</h5>`)
   $('#upload_file_button').attr('disabled', false)
   const file = document.getElementById('doc-file').files[0]
   if (!file) {
@@ -286,7 +286,7 @@ async function get_Sha3() {
         window.hashedfile = await web3.utils.soliditySha3('0x' + hex)
         console.log(`Document Hash (bytes): ${window.hashedfile}`)
         $('#note').html(
-          `<h5 class="text-center text-info">Document Hashed  😎 </h5>`,
+          `<h5 class="text-center text-info">Document Hashed  <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😎</span> </h5>`,
         )
       } catch (e) {
         console.log('hashing error', e)
@@ -315,7 +315,7 @@ function print_info(result, is_verified) {
     // document.getElementById('download-document').classList.add('d-none')
     $('#download-document').hide()
     $('#doc-status').html(`<h3 class="text-danger">
-        Certificate not Verified 😕
+        Certificate not Verified <span style="font-size: 28px; display: inline-block; animation: shake 0.5s ease-in-out 3;">😕</span>
          <i class="text-danger  fa fa-times-circle" aria-hidden="true"></i>
         </h3>`)
     $('#file-hash').html(
@@ -343,7 +343,7 @@ function print_info(result, is_verified) {
     // hide loader
     $('#loader').hide()
     $('#doc-status').html(`<h3 class="text-info">
-         Certificate Verified Successfully 😊
+         Certificate Verified Successfully <span style="font-size: 28px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😊</span>
          <i class="text-info fa fa-check-circle" aria-hidden="true"></i>
         </h3>`)
     $('#file-hash').html(

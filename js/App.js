@@ -395,7 +395,7 @@ function printUploadInfo(result) {
   get_ethBalance()
 
   $('#note').html(`<h5 class="text-info">
-   Transaction Confirmed to the BlockChain 😊<i class="mx-2 text-info fa fa-check-circle" aria-hidden="true"></i>
+   Transaction Confirmed to the BlockChain <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😊</span><i class="mx-2 text-info fa fa-check-circle" aria-hidden="true"></i>
    </h5>`)
   listen()
 }
@@ -470,13 +470,13 @@ async function deleteHash() {
       .send({ from: window.userAddress })
       .on('transactionHash', function (hash) {
         $('#note').html(
-          `<h5 class="text-info p-1 text-center">Please wait for transaction to be mined 😴</h5>`,
+          `<h5 class="text-info p-1 text-center">Please wait for transaction to be mined <span style="font-size: 20px; display: inline-block; animation: pulse 1.5s infinite;">😴</span></h5>`,
         )
       })
 
       .on('receipt', function (receipt) {
         $('#note').html(
-          `<h5 class="text-info p-1 text-center">Document Deleted 😳</h5>`,
+          `<h5 class="text-info p-1 text-center">Document Deleted <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😳</span></h5>`,
         )
 
         $('#loader').addClass('d-none')
@@ -710,7 +710,7 @@ async function testTransactionSimulation(address, info) {
 
 function get_Sha3() {
   hide_txInfo()
-  $('#note').html(`<h5 class="text-warning">Hashing Your Document 😴...</h5>`)
+  $('#note').html(`<h5 class="text-warning">Hashing Your Document <span style="font-size: 20px; display: inline-block; animation: pulse 1.5s infinite;">😴</span>...</h5>`)
   $('#upload_file_button').attr('disabled', false)
 
   const file = document.getElementById('doc-file').files[0]
@@ -727,7 +727,7 @@ function get_Sha3() {
         const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
         window.hashedfile = web3.utils.soliditySha3('0x' + hex)
         console.log(`Document Hash : ${window.hashedfile}`)
-        $('#note').html(`<h5 class="text-center text-info">Document Hashed  😎 </h5>`)
+        $('#note').html(`<h5 class="text-center text-info">Document Hashed  <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😎</span> </h5>`)
       } catch (e) {
         console.log('hash error', e)
         $('#note').html(`<h5 class="text-center text-danger">Hashing failed</h5>`)
@@ -862,7 +862,7 @@ async function addExporter() {
             
             .on('transactionHash', function (hash) {
               $('#note').html(
-                `<h5 class="text-info p-1 text-center">Please wait for transaction to be mined 😴...</h5>`,
+                `<h5 class="text-info p-1 text-center">Please wait for transaction to be mined <img src="https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif" alt="😴" style="width: 24px; height: 24px; vertical-align: middle; display: inline-block;">...</h5>`,
               )
             })
 
