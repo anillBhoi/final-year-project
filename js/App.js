@@ -1043,6 +1043,7 @@ function drawCertificateToCanvas(fields) {
   if (!canvas) return null
   const ctx = canvas.getContext('2d')
   // background
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -1150,13 +1151,13 @@ function drawCertificateToCanvas(fields) {
     const addr = (window.userAddress||'')
     const tplDataUrl = window.localStorage.getItem('cert_template_'+addr)
     const isActive = window.localStorage.getItem('cert_template_active_'+addr) === 'true'
-    const disableOverlay = window.localStorage.getItem('cert_template_disableOverlay_'+addr) === 'true'
     if (tplDataUrl && isActive) {
       const img = new Image()
       img.onload = () => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        // Always render fields (student, course, grade, date). Decorative parts controlled by overlay flag.
-        renderForeground(disableOverlay)
+        // With a custom template, use it purely as the background
+        // but still render editable text fields on top (no default border/heading).
+        renderForeground(true)
       }
       img.src = tplDataUrl
       return canvas
