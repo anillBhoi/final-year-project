@@ -1042,6 +1042,7 @@ function drawCertificateToCanvas(fields) {
   const canvas = document.getElementById('cert-canvas')
   if (!canvas) return null
   const ctx = canvas.getContext('2d')
+  window.__certRenderPromise = Promise.resolve()
   // background
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#ffffff'
@@ -1153,12 +1154,20 @@ function drawCertificateToCanvas(fields) {
     const isActive = window.localStorage.getItem('cert_template_active_'+addr) === 'true'
     if (tplDataUrl && isActive) {
       const img = new Image()
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        // With a custom template, use it purely as the background
-        // but still render editable text fields on top (no default border/heading).
-        renderForeground(true)
-      }
+      window.__certRenderPromise = new Promise((resolve) => {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          // With a custom template, use it purely as the background
+          // but still render editable text fields on top (no default border/heading).
+          renderForeground(true)
+          resolve()
+        }
+        img.onerror = () => {
+          // Fall back to default rendering if template image fails.
+          renderForeground(false)
+          resolve()
+        }
+      })
       img.src = tplDataUrl
       return canvas
     }
@@ -1166,6 +1175,7 @@ function drawCertificateToCanvas(fields) {
 
   // No active template → draw full default foreground
   renderForeground(false)
+  window.__certRenderPromise = Promise.resolve()
 
   // live update on checkbox toggles (bind once)
   try {
@@ -1253,6 +1263,8 @@ async function generateAndUploadCertificate() {
       $('#note').html(`<h5 class="text-center text-danger">Canvas not available on this page.</h5>`)
       return
     }
+    // Wait for template image (if any) to finish rendering before export/hash/upload.
+    try { await window.__certRenderPromise } catch(e) {}
 
     // Convert to PNG Blob (this exact blob will be used for IPFS, hashing, and download)
     const dataUrl = canvas.toDataURL('image/png')
@@ -1791,11 +1803,12 @@ window.addEventListener('load', () => {
     // Download button
     const dlBtn = document.getElementById('download-cert')
     if (dlBtn) {
-      dlBtn.addEventListener('click', () => {
+      dlBtn.addEventListener('click', async () => {
         const canvas = document.getElementById('cert-canvas')
         if (!canvas) return
-        // Ensure latest fields are rendered
-        previewCertificate()
+        // Ensure latest fields/template are rendered before export.
+        drawCertificateToCanvas(getCertificateFields())
+        try { await window.__certRenderPromise } catch(e) {}
         const url = canvas.toDataURL('image/png')
         const a = document.createElement('a')
         a.href = url
