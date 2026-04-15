@@ -9,44 +9,38 @@ async function deleteDocument() {
         // Validate network and contract econnection
         const isNetworkValid = await validateNetwork()
         if (!isNetworkValid) return
-        if (!isNetworkValid) return
 
         $('#loader').removeClass('d-none')
         $('#delete-button').slideUp()
         $('#note').html(`<h5 class="text-info">Hashing document...</h5>`)
 
-        // Hash the document
+        // Hash using file bytes (same strategy as verify/upload)
         const file = fileInput.files[0]
-        const reader = new FileReader()
-        
-        const hash = await new Promise((resolve, reject) => {
-            reader.onload = function(event) {
-                try {
-                    const hashedFile = web3.utils.soliditySha3(event.target.result)
-                    resolve(hashedFile)
-                } catch (error) {
-                    reject(error)
-                }
-            }
-            reader.onerror = reject
-            reader.readAsText(file, 'UTF-8')
-        })
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+        const hash = web3.utils.soliditySha3('0x' + hex)
 
         // Check if document exists
-        const [timestamp] = await window.contractRPC.methods
+        const result = await window.contractRPC.methods
             .findDocHash(hash)
             .call({ from: window.userAddress })
+        const timestamp = Number(result[1] ?? result.minetime ?? 0)
 
-        if (timestamp == 0) {
+        if (timestamp === 0) {
             throw new Error('Document not found on blockchain')
         }
 
         $('#note').html(`<h5 class="text-info">Please confirm the transaction...</h5>`)
 
-        // Delete the document hash
+        // Estimate gas first to avoid default high gas limit issues
+        const gasEstimate = await window.contract.methods
+            .deleteHash(hash)
+            .estimateGas({ from: window.userAddress })
+        const gasPrice = await window.web3.eth.getGasPrice()
+
         await window.contract.methods
             .deleteHash(hash)
-            .send({ from: window.userAddress })
+            .send({ from: window.userAddress, gas: Math.floor(Number(gasEstimate) * 1.1), gasPrice })
             .on('transactionHash', function(txHash) {
                 $('#note').html(`<h5 class="text-info">Please wait for transaction to be mined...</h5>`)
             })
