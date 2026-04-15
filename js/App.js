@@ -432,10 +432,12 @@ function simulateScanAndVerify() {
     $('#note').html(`<h5 class="text-warning">Generate and upload a certificate first.</h5>`)
     return
   }
-  const verifyUrl =
+  const baseVerifyUrl =
     window.latestVerifyUrl ||
     new URL(`verify.html?hash=${window.hashedfile}`, window.location.href).href
-  window.open(verifyUrl, '_blank')
+  const verifyUrl = new URL(baseVerifyUrl)
+  verifyUrl.searchParams.set('autoVerify', '1')
+  window.location.assign(verifyUrl.toString())
 }
 
 async function sendHash() {
