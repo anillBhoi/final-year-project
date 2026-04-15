@@ -224,20 +224,22 @@ const contract = new web3.eth.Contract(
 const SUCCESS_IMAGE = './files/securefiles.svg'
 const FAILURE_IMAGE = './files/notvalid.svg'
 
-window.onload = async () => {
+window.addEventListener('load', async () => {
   $('#loader').hide()
   $('.loader-wraper').fadeOut('slow')
   checkURL()
   $('#upload_file_button').attr('disabled', true)
-}
+})
 
 async function verify_Hash() {
   $('#loader').show()
-  if (!window.hashedfile) return
+  if (!window.hashedfile) {
+    $('#loader').hide()
+    return
+  }
   try {
-    const result = await contract.methods
-      .findDocHash(window.hashedfile)
-      .call({ from: window.userAddress })
+    // Read-only verification should work even without wallet connection.
+    const result = await contract.methods.findDocHash(window.hashedfile).call()
     console.log(result)
     $('.transaction-status').removeClass('d-none')
     window.newHash = result

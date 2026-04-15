@@ -400,6 +400,44 @@ function printUploadInfo(result) {
   listen()
 }
 
+function generateQRCode() {
+  const qrWrap = document.getElementById('qrcode')
+  if (!qrWrap || !window.hashedfile) return
+
+  const verifyUrl = new URL(`verify.html?hash=${window.hashedfile}`, window.location.href).href
+  qrWrap.innerHTML = ''
+  new QRCode(qrWrap, {
+    text: verifyUrl,
+    width: 180,
+    height: 180,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H,
+  })
+
+  // Keep URL for simulated scan and allow downloading generated QR image.
+  window.latestVerifyUrl = verifyUrl
+  setTimeout(() => {
+    const qrImg = qrWrap.querySelector('img') || qrWrap.querySelector('canvas')
+    const downloadLink = document.getElementById('download-link')
+    if (downloadLink && qrImg) {
+      const url = qrImg.tagName.toLowerCase() === 'canvas' ? qrImg.toDataURL('image/png') : qrImg.src
+      downloadLink.href = url
+    }
+  }, 100)
+}
+
+function simulateScanAndVerify() {
+  if (!window.hashedfile) {
+    $('#note').html(`<h5 class="text-warning">Generate and upload a certificate first.</h5>`)
+    return
+  }
+  const verifyUrl =
+    window.latestVerifyUrl ||
+    new URL(`verify.html?hash=${window.hashedfile}`, window.location.href).href
+  window.open(verifyUrl, '_blank')
+}
+
 async function sendHash() {
   $('#loader').removeClass('d-none')
   $('#upload_file_button').slideUp()
@@ -1145,6 +1183,30 @@ function drawCertificateToCanvas(fields) {
     ctx.fillStyle = '#777'
     ctx.fillText('Verify this certificate on-chain via the Verify page using its QR/Hash.', canvas.width / 2, 560)
   }
+
+  // Draw embedded QR marker inside certificate (lower-right).
+  if (window.__embeddedQrDataUrl) {
+    const qrImage = new Image()
+    window.__certQrPromise = new Promise((resolve) => {
+      qrImage.onload = () => {
+        const qrSize = 110
+        const qrX = canvas.width - qrSize - 48
+        const qrY = canvas.height - qrSize - 80
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12)
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize)
+        ctx.fillStyle = '#555'
+        ctx.font = `14px ${fontFamily}`
+        ctx.textAlign = 'center'
+        ctx.fillText('Scan to verify', qrX + (qrSize / 2), qrY + qrSize + 20)
+        resolve()
+      }
+      qrImage.onerror = () => resolve()
+    })
+    qrImage.src = window.__embeddedQrDataUrl
+  } else {
+    window.__certQrPromise = Promise.resolve()
+  }
   }
 
   // custom template background (draw first, then foreground in onload)
@@ -1160,12 +1222,12 @@ function drawCertificateToCanvas(fields) {
           // With a custom template, use it purely as the background
           // but still render editable text fields on top (no default border/heading).
           renderForeground(true)
-          resolve()
+          Promise.resolve(window.__certQrPromise).then(resolve)
         }
         img.onerror = () => {
           // Fall back to default rendering if template image fails.
           renderForeground(false)
-          resolve()
+          Promise.resolve(window.__certQrPromise).then(resolve)
         }
       })
       img.src = tplDataUrl
@@ -1175,7 +1237,7 @@ function drawCertificateToCanvas(fields) {
 
   // No active template → draw full default foreground
   renderForeground(false)
-  window.__certRenderPromise = Promise.resolve()
+  window.__certRenderPromise = Promise.resolve(window.__certQrPromise)
 
   // live update on checkbox toggles (bind once)
   try {
@@ -1255,6 +1317,15 @@ async function generateAndUploadCertificate() {
       $('#note').html(`<h5 class="text-center text-danger">Only authorised exporters can generate certificates.</h5>`)
       return
     }
+
+    // Create a stable QR payload and embed it inside certificate before hashing.
+    const embeddedPayload = JSON.stringify({
+      app: 'CertiFlex',
+      issuer: window.info || '',
+      student: (document.getElementById('cert-student') || {}).value || '',
+      date: (document.getElementById('cert-date') || {}).value || '',
+    })
+    window.__embeddedQrDataUrl = await createEmbeddedQrDataUrl(embeddedPayload)
 
     // Render
     const fields = getCertificateFields()
@@ -1819,7 +1890,44 @@ window.addEventListener('load', () => {
         a.remove()
       })
     }
+
+    const scanButton = document.getElementById('simulate-scan')
+    if (scanButton) {
+      scanButton.addEventListener('click', simulateScanAndVerify)
+    }
   } catch (e) {
     console.log('Template controls init error:', e)
   }
 })
+
+function createEmbeddedQrDataUrl(text) {
+  return new Promise((resolve) => {
+    const holder = document.createElement('div')
+    holder.style.position = 'fixed'
+    holder.style.left = '-9999px'
+    holder.style.top = '-9999px'
+    document.body.appendChild(holder)
+
+    try {
+      new QRCode(holder, {
+        text: text || 'CertiFlex',
+        width: 160,
+        height: 160,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      })
+      setTimeout(() => {
+        const qrNode = holder.querySelector('img') || holder.querySelector('canvas')
+        const dataUrl = qrNode
+          ? (qrNode.tagName.toLowerCase() === 'canvas' ? qrNode.toDataURL('image/png') : qrNode.src)
+          : null
+        holder.remove()
+        resolve(dataUrl)
+      }, 80)
+    } catch (e) {
+      holder.remove()
+      resolve(null)
+    }
+  })
+}
