@@ -30,6 +30,8 @@ async function deleteDocument() {
             throw new Error('Document not found on blockchain')
         }
 
+        window.hashedfile = hash
+
         $('#note').html(`<h5 class="text-info">Please confirm the transaction...</h5>`)
 
         // Estimate gas first to avoid default high gas limit issues
@@ -47,7 +49,7 @@ async function deleteDocument() {
             .on('receipt', function(receipt) {
                 $('#loader').addClass('d-none')
                 $('#delete-button').slideDown()
-                $('#note').html(`<h5 class="text-success">Document hash deleted successfully</h5>`)
+                $('#note').html(`<h5 class="text-success">Document hash deleted successfully ${typeof window.certEmoji === 'function' ? window.certEmoji('😳', 'emoji-bounce') : '😳'}</h5>`)
                 
                 // Clear file input
                 fileInput.value = ''

@@ -11,38 +11,676 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />    
   <link rel="stylesheet" href="css/main.css" />
   <style>
-    #fabric-canvas {
-      background: white;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@600;700;800;900&display=swap');
+
+    :root {
+      --surface: #111827;
+      --surface-strong: #0f172a;
+      --surface-soft: rgba(17, 24, 39, 0.85);
+      --bg: #0a0f1e;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent-blue: #3b82f6;
+      --accent-teal: #0d9488;
+      --accent-gold: #f59e0b;
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
     }
-    .canvas-container {
-      margin: 0 auto;
-      max-width: 100%;
-      overflow: auto;
+
+    body {
+      background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 16%),
+                  radial-gradient(circle at 90% 10%, rgba(13, 148, 136, 0.08), transparent 14%),
+                  linear-gradient(180deg, #09101f 0%, #06101c 30%, #080d1a 100%);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
     }
-    #designer input.form-control {
-      background: white;
-      color: #333;
-      border: 1px solid #ced4da;
+
+    .certificate-page {
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+      position: relative;
+      overflow: hidden;
     }
-    #designer .btn {
-      min-width: 80px;
+
+    .certificate-page::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.18), transparent 18%),
+                        radial-gradient(circle at 80% 12%, rgba(59, 130, 246, 0.16), transparent 16%),
+                        radial-gradient(circle at 45% 85%, rgba(13, 148, 136, 0.12), transparent 20%);
+      pointer-events: none;
+      z-index: 0;
     }
-    #designer .btn-outline-secondary {
-      border-color: #ced4da;
-      color: #495057;
+
+    .designer-shell {
+      position: relative;
+      z-index: 1;
+      background: rgba(17, 24, 39, 0.96);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 32px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
-    #designer .btn-outline-secondary:hover {
-      background-color: #e9ecef;
-      color: #212529;
+
+    .designer-shell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 32px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.55), rgba(13, 148, 136, 0.35), rgba(245, 158, 11, 0.45));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
     }
-    #color-picker {
-      width: 50px;
+
+    .designer-grid {
+      display: grid;
+      grid-template-columns: 1.55fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .designer-panel,
+    .preview-panel {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+
+    .designer-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-family: 'Syne', sans-serif;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .status-dot,
+    .live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .status-dot::before,
+    .live-dot::before {
+      content: '';
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent-teal);
+      box-shadow: 0 0 12px rgba(13, 148, 136, 0.8);
+    }
+
+    .tab-list {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-button {
+      flex: 1;
+      min-width: 110px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      padding: 0.95rem 1rem;
+      border-radius: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .tab-button.active,
+    .tab-button:hover {
+      background: rgba(59, 130, 246, 0.14);
+      border-color: rgba(59, 130, 246, 0.45);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.28s ease;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .form-field {
+      position: relative;
+      margin-top: 0.75rem;
+    }
+
+    .form-field input,
+    .form-field select {
+      width: 100%;
+      padding: 1.2rem 1rem 0.8rem;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus {
+      background: rgba(22, 12, 52, 0.98);
+      border-color: rgba(143, 92, 255, 0.85);
+      box-shadow: 0 0 0 3px rgba(143, 92, 255, 0.28), 0 0 20px rgba(28, 199, 255, 0.14);
+    }
+
+    .form-field input:-webkit-autofill,
+    .form-field input:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 1000px rgba(22, 12, 52, 0.98) inset !important;
+      -webkit-text-fill-color: var(--text) !important;
+      border-color: rgba(143, 92, 255, 0.85);
+    }
+
+    .form-field label {
+      position: absolute;
+      left: 1rem;
+      top: 1.1rem;
+      color: rgba(226, 232, 240, 0.76);
+      pointer-events: none;
+      transition: transform 0.2s ease, font-size 0.2s ease, top 0.2s ease;
+      font-size: 0.95rem;
+      background: transparent;
+    }
+
+    .form-field input:not(:placeholder-shown) + label,
+    .form-field input:focus + label,
+    .form-field select:focus + label {
+      transform: translateY(-1.35rem);
+      font-size: 0.78rem;
+      top: 0.95rem;
+      color: var(--accent-blue);
+    }
+
+    .form-field.full-width {
+      grid-column: span 2;
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    .pill-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      width: 100%;
+      padding: 1rem 1rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      color: var(--text);
+    }
+
+    .pill-toggle input {
+      accent-color: var(--accent-teal);
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .pill-toggle:hover {
+      transform: translateY(-1px);
+      border-color: rgba(13, 148, 136, 0.5);
+      background: rgba(13, 148, 136, 0.08);
+    }
+
+    .style-grid,
+    .swatch-grid,
+    .thumbnail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+
+    .style-item,
+    .swatch,
+    .thumbnail-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 1rem;
+      color: var(--text);
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+
+    .style-item:hover,
+    .swatch:hover,
+    .thumbnail-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(59, 130, 246, 0.6);
+      box-shadow: 0 18px 45px rgba(59, 130, 246, 0.12);
+    }
+
+    .style-item.active,
+    .thumbnail-card.active {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
+    }
+
+    .font-select {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .font-select select {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+      padding: 1rem 1rem;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .slider-row input[type='range'] {
+      width: 100%;
+      accent-color: var(--accent-blue);
+    }
+
+    .alignment-buttons,
+    .format-buttons {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .icon-button,
+    .pill-button {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 0.9rem 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+    }
+
+    .icon-button.active,
+    .pill-button.active,
+    .icon-button:hover,
+    .pill-button:hover {
+      background: rgba(59, 130, 246, 0.16);
+      border-color: rgba(59, 130, 246, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .color-swatch-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .swatch.custom {
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+
+    .swatch.custom input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .color-picker-input {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
       padding: 0;
-      height: 38px;
     }
-    .bg-light {
-      background-color: #f8f9fa !important;
-      border-radius: 4px;
+
+    .thumbnail-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 1rem;
+    }
+
+    .thumbnail-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 120px;
+    }
+
+    .thumbnail-card span {
+      color: rgba(226, 232, 240, 0.72);
+      font-size: 0.85rem;
+    }
+
+    .drop-zone {
+      border: 2px dashed rgba(59, 130, 246, 0.45);
+      border-radius: 22px;
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: rgba(226, 232, 240, 0.72);
+      padding: 1rem;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .drop-zone:hover {
+      background: rgba(59, 130, 246, 0.06);
+      border-color: rgba(59, 130, 246, 0.8);
+    }
+
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 1.5rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .button-secondary {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      padding: 0.95rem 1.4rem;
+      border-radius: 18px;
+      transition: all 0.2s ease;
+    }
+
+    .button-secondary:hover,
+    .button-primary:hover,
+    .glow-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 50px rgba(59, 130, 246, 0.18);
+    }
+
+    .button-primary {
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(13, 148, 136, 0.18));
+      color: #fff;
+      padding: 0.95rem 1.4rem;
+      border-radius: 18px;
+    }
+
+    .glow-button {
+      background: linear-gradient(135deg, #3b82f6, #0d9488);
+      color: #fff;
+      padding: 0.95rem 1.5rem;
+      border-radius: 18px;
+      border: none;
+      box-shadow: 0 16px 40px rgba(13, 148, 136, 0.28);
+      text-transform: none;
+    }
+
+    .info-note {
+      color: rgba(226, 232, 240, 0.72);
+      font-size: 0.86rem;
+      max-width: 540px;
+    }
+
+    .preview-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .preview-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    .live-dot {
+      width: 12px;
+      height: 12px;
+    }
+
+    .preview-card {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.98));
+      border-radius: 28px;
+      padding: 1.5rem;
+      border: 1px solid rgba(59, 130, 246, 0.22);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), transparent 30%);
+    }
+
+    .certificate-card {
+      position: relative;
+      background: #0b1320;
+      border-radius: 24px;
+      padding: 2rem;
+      border: 1px solid rgba(59, 130, 246, 0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
+      z-index: 1;
+    }
+
+    .certificate-card h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.55rem;
+      letter-spacing: 0.08em;
+      color: var(--accent-blue);
+      margin-bottom: 1rem;
+    }
+
+    .certificate-card .org-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.78rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .certificate-card .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 1.3rem 0;
+    }
+
+    .certificate-card .subtle {
+      color: rgba(226, 232, 240, 0.66);
+      font-style: italic;
+      margin-bottom: 0.9rem;
+    }
+
+    .certificate-card .student-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.4rem;
+      color: #fff;
+      margin-bottom: 0.85rem;
+    }
+
+    .certificate-card .course-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #dbeafe;
+      margin-bottom: 1rem;
+    }
+
+    .certificate-card .details-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      color: rgba(226, 232, 240, 0.72);
+      font-size: 0.92rem;
+      margin-bottom: 1rem;
+    }
+
+    .certificate-card .details-row span {
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    .certificate-card .footer-text {
+      color: rgba(226, 232, 240, 0.58);
+      font-size: 0.82rem;
+      margin-top: 1.5rem;
+    }
+
+    .certificate-card .qr-placeholder {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      width: 120px;
+      height: 120px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed rgba(255,255,255,0.14);
+      display: grid;
+      place-items: center;
+      color: rgba(226, 232, 240, 0.5);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .hash-bar {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      color: rgba(226, 232, 240, 0.85);
+      font-size: 0.92rem;
+    }
+
+    .hash-bar span {
+      font-family: 'Syne', sans-serif;
+      letter-spacing: 0.04em;
+    }
+
+    .hash-actions button {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.34);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .hash-actions button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 36px rgba(59, 130, 246, 0.16);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1100px) {
+      .designer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .certificate-page {
+        padding: 1rem 0.75rem 2rem;
+      }
+      .designer-shell {
+        padding: 1rem;
+      }
+      .panel-header {
+        font-size: 1rem;
+      }
+      .form-grid,
+      .style-grid,
+      .swatch-grid,
+      .thumbnail-grid,
+      .toggle-grid {
+        grid-template-columns: 1fr;
+      }
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .hash-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
     }
   </style>
   <link rel="icon" href="./assets/images/icon.png" />
@@ -64,10 +702,11 @@
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="upload.html">Upload</a></li>
-          <li class="nav-item"><a class="nav-link" href="verify.html">Verify</a></li>
-          <li class="nav-item"><a class="nav-link" href="delete.html">Delete</a></li>
-          <li class="nav-item"><a class="nav-link" href="admin.html">Admin</a></li>
+          <li class="nav-item user-nav"><a class="nav-link" href="upload.html">Upload</a></li>
+          <li class="nav-item user-nav"><a class="nav-link" href="verify.html">Verify</a></li>
+          <li class="nav-item user-nav"><a class="nav-link" href="delete.html">Delete</a></li>
+          <li class="nav-item owner-only d-none"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
+          <li class="nav-item owner-only d-none"><a class="nav-link" href="admin.html">Admin</a></li>
           <li class="nav-item"><a class="nav-link active" href="certificate.html">Certificate</a></li>
         </ul>
         <div class="d-flex">
@@ -94,33 +733,168 @@
         <img id="loader" class="d-none" src="files/loader.svg" alt="loader">
       </div>
 
-      <div class="col-12 data-upload my-3 bg-white p-4 rounded shadow-sm">
+      <div class="col-12 my-3 certificate-page">
         <div id="designer-guard" class="alert alert-warning d-none">Only authorised exporters can access the certificate designer.</div>
-        <div id="designer" class="d-none">
-          <h4 class="mb-3 text-dark">Certificate Designer</h4>
-          <div class="row g-2 mb-3">
-            <div class="col-md-4"><input id="field-student" class="form-control" placeholder="Student Name" /></div>
-            <div class="col-md-4"><input id="field-course" class="form-control" placeholder="Course/Program" /></div>
-            <div class="col-md-2"><input id="field-grade" class="form-control" placeholder="Grade" /></div>
-            <div class="col-md-2"><input id="field-date" type="date" class="form-control" /></div>
-            <div class="col-12"><input id="field-issuer" class="form-control" placeholder="Issuer (defaults to exporter org)" /></div>
-          </div>
-          <div class="d-flex gap-2 mb-2">
-            <button class="btn btn-secondary" id="btn-add-text">Add Text</button>
-            <button class="btn btn-outline-secondary" id="btn-bold">Bold</button>
-            <button class="btn btn-outline-secondary" id="btn-italic">Italic</button>
-            <button class="btn btn-outline-secondary" id="btn-align-left">Left</button>
-            <button class="btn btn-outline-secondary" id="btn-align-center">Center</button>
-            <button class="btn btn-outline-secondary" id="btn-align-right">Right</button>
-            <input type="color" id="color-picker" class="form-control form-control-color" title="Pick text color" />
-          </div>
-          <div class="bg-light p-2 text-center mb-3">
-            <canvas id="fabric-canvas" width="1000" height="700" style="max-width:100%;border:1px dashed #ccc"></canvas>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-primary" id="btn-preview">Preview Default Template</button>
-            <button class="btn btn-success" id="btn-generate">Generate & Upload</button>
-            <a class="btn btn-outline-secondary" id="btn-download" download="certificate.png">Download PNG</a>
+        <div id="designer" class="d-none designer-shell">
+          <div class="designer-grid">
+            <section class="designer-panel">
+              <div class="panel-header">
+                <span class="status-dot"></span>
+                🎓 Certificate Generator
+              </div>
+
+              <div class="tab-list" role="tablist">
+                <button type="button" class="tab-button active" data-target="details-tab">Details</button>
+                <button type="button" class="tab-button" data-target="style-tab">Style</button>
+                <button type="button" class="tab-button" data-target="template-tab">Template</button>
+              </div>
+
+              <div class="tab-panel active" id="details-tab">
+                <div class="form-grid">
+                  <div class="form-field">
+                    <input id="field-student" type="text" placeholder=" " />
+                    <label for="field-student">Student Name</label>
+                  </div>
+                  <div class="form-field">
+                    <input id="field-course" type="text" placeholder=" " />
+                    <label for="field-course">Course / Program</label>
+                  </div>
+                  <div class="form-field">
+                    <input id="field-grade" type="text" placeholder=" " />
+                    <label for="field-grade">Grade / Score</label>
+                  </div>
+                  <div class="form-field">
+                    <input id="field-date" type="date" placeholder=" " />
+                    <label for="field-date">Issue Date</label>
+                  </div>
+                  <div class="form-field full-width">
+                    <input id="field-issuer" type="text" placeholder=" " />
+                    <label for="field-issuer">Issuer / Organization</label>
+                  </div>
+                  <div class="form-field full-width">
+                    <input id="field-tagline" type="text" placeholder=" " />
+                    <label for="field-tagline">Custom Tagline (optional)</label>
+                  </div>
+                </div>
+
+                <div class="toggle-grid">
+                  <label class="pill-toggle"><span>Show Organization Name</span><input type="checkbox" id="toggle-org" checked /></label>
+                  <label class="pill-toggle"><span>Show Holder's Name</span><input type="checkbox" id="toggle-holder" checked /></label>
+                  <label class="pill-toggle"><span>Show Tagline / Description</span><input type="checkbox" id="toggle-tagline" checked /></label>
+                  <label class="pill-toggle"><span>Show QR Code</span><input type="checkbox" id="toggle-qr" checked /></label>
+                </div>
+              </div>
+
+              <div class="tab-panel" id="style-tab">
+                <div class="font-select">
+                  <select id="font-family" aria-label="Font family selector">
+                    <option value="Serif">Serif</option>
+                    <option value="Sans-Serif">Sans-Serif</option>
+                    <option value="Elegant Script">Elegant Script</option>
+                    <option value="Modern">Modern</option>
+                  </select>
+                  <div class="font-preview">Preview</div>
+                </div>
+
+                <div class="slider-row">
+                  <label class="text-sm">Font size</label>
+                  <span id="font-size-value">1.0x</span>
+                </div>
+                <input id="font-size" type="range" min="0.8" max="2" step="0.05" value="1" />
+
+                <div class="alignment-buttons">
+                  <button type="button" class="icon-button active" id="align-left">Left</button>
+                  <button type="button" class="icon-button" id="align-center">Center</button>
+                  <button type="button" class="icon-button" id="align-right">Right</button>
+                </div>
+
+                <div class="format-buttons">
+                  <button type="button" class="pill-button" id="btn-add-text">Add Text</button>
+                  <button type="button" class="pill-button" id="btn-bold">B</button>
+                  <button type="button" class="pill-button" id="btn-italic">I</button>
+                  <input type="color" id="color-picker" class="color-picker-input" value="#111111" title="Text color" />
+                </div>
+
+                <div>
+                  <div class="font-label">Border color</div>
+                  <div class="color-swatch-row">
+                    <div class="swatch" style="background: #0d9488;" data-color="#0d9488"></div>
+                    <div class="swatch" style="background: #1e40af;" data-color="#1e40af"></div>
+                    <div class="swatch" style="background: #f59e0b;" data-color="#f59e0b"></div>
+                    <div class="swatch" style="background: #000000;" data-color="#000000"></div>
+                    <div class="swatch" style="background: #7c3aed;" data-color="#7c3aed"></div>
+                    <div class="swatch custom"><input type="color" id="border-custom" value="#3b82f6" /></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="font-label">Background</div>
+                  <div class="color-swatch-row">
+                    <div class="swatch" style="background: #ffffff;"></div>
+                    <div class="swatch" style="background: #f8f3e8;"></div>
+                    <div class="swatch" style="background: #e5e7eb;"></div>
+                    <div class="swatch" style="background: #dbeafe;"></div>
+                  </div>
+                </div>
+
+                <div class="thumbnail-grid">
+                  <div class="thumbnail-card active" data-template="classic"><strong>Classic</strong><span>Elegant serif layout</span></div>
+                  <div class="thumbnail-card" data-template="modern"><strong>Modern</strong><span>Bold contemporary style</span></div>
+                  <div class="thumbnail-card" data-template="minimal"><strong>Minimal</strong><span>Clean premium space</span></div>
+                </div>
+              </div>
+
+              <div class="tab-panel" id="template-tab">
+                <div class="drop-zone" id="template-drop">
+                  <div>
+                    <i class="fa-solid fa-cloud-arrow-up fa-2x" style="color: rgba(59,130,246,0.8);"></i>
+                    <p class="mb-1">Drop image or click to browse</p>
+                    <small>Upload custom background image</small>
+                  </div>
+                </div>
+                <div class="action-buttons" style="margin-top: 1rem;">
+                  <button type="button" id="btn-apply-template" class="button-secondary">Apply Template</button>
+                  <button type="button" id="btn-clear-template" class="button-secondary">Clear Template</button>
+                </div>
+              </div>
+
+              <div class="action-bar">
+                <div class="action-buttons">
+                  <button type="button" class="button-secondary" id="btn-preview">👁 Preview</button>
+                  <button type="button" class="button-secondary" id="btn-insert-qr">🔗 Insert QR</button>
+                  <a id="btn-download" download="certificate.png" class="button-secondary">⬇ Download PNG</a>
+                  <button type="button" class="glow-button" id="btn-generate">🚀 Generate & Upload to Chain</button>
+                </div>
+                <p class="info-note">A unique hash will be stored on-chain. Image pinned to IPFS.</p>
+              </div>
+            </section>
+
+            <aside class="preview-panel">
+              <div class="preview-label"><span class="live-dot"></span> LIVE PREVIEW</div>
+              <div class="preview-card">
+                <div class="certificate-card">
+                  <div class="org-label" id="preview-org">Authorised Exporter</div>
+                  <h2 id="preview-heading">CERTIFICATE OF ACHIEVEMENT</h2>
+                  <div class="divider"></div>
+                  <div class="subtle">This certifies that</div>
+                  <div class="student-name" id="preview-student">Student Name</div>
+                  <div class="course-name" id="preview-course">Course / Program</div>
+                  <div class="subtle">has successfully completed</div>
+                  <div class="details-row">
+                    <span>Grade: <strong id="preview-grade">A+</strong></span>
+                    <span>Date: <strong id="preview-date">2025-12-01</strong></span>
+                  </div>
+                  <div class="footer-text">Verify this certificate on-chain via QR/Hash</div>
+                  <div class="qr-placeholder">QR CODE</div>
+                </div>
+              </div>
+              <div class="hash-bar">
+                <span>CERT-HASH: <strong id="preview-hash">—</strong></span>
+                <div class="hash-actions">
+                  <button type="button" id="btn-copy-hash"><i class="fa-regular fa-copy"></i> Copy</button>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
@@ -134,6 +908,69 @@
   <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
   <script src="./js/ipfs.js"></script>
   <script src="./js/certificate.js"></script>
+  <script>
+    document.querySelectorAll('.tab-button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab-button').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById(button.dataset.target).classList.add('active');
+      });
+    });
+
+    const previewPairs = [
+      { input: 'field-student', output: 'preview-student', fallback: 'Student Name' },
+      { input: 'field-course', output: 'preview-course', fallback: 'Course / Program' },
+      { input: 'field-grade', output: 'preview-grade', fallback: 'A+' },
+      { input: 'field-date', output: 'preview-date', fallback: new Date().toISOString().slice(0, 10) },
+      { input: 'field-issuer', output: 'preview-org', fallback: 'Authorised Exporter' }
+    ];
+
+    previewPairs.forEach(({ input, output, fallback }) => {
+      const source = document.getElementById(input);
+      const target = document.getElementById(output);
+      if (!source || !target) return;
+      const update = () => {
+        target.textContent = source.value.trim() || fallback;
+      };
+      source.addEventListener('input', update);
+      update();
+    });
+
+    const qrToggle = document.getElementById('toggle-qr');
+    const qrPlaceholder = document.querySelector('.qr-placeholder');
+    if (qrToggle && qrPlaceholder) {
+      qrToggle.addEventListener('change', () => {
+        qrPlaceholder.style.display = qrToggle.checked ? 'grid' : 'none';
+      });
+      qrToggle.dispatchEvent(new Event('change'));
+    }
+
+    const fontSizeInput = document.getElementById('font-size');
+    const fontSizeValue = document.getElementById('font-size-value');
+    if (fontSizeInput && fontSizeValue) {
+      const updateSize = () => {
+        fontSizeValue.textContent = `${parseFloat(fontSizeInput.value).toFixed(2)}x`;
+      };
+      fontSizeInput.addEventListener('input', updateSize);
+      updateSize();
+    }
+
+    const copyButton = document.getElementById('btn-copy-hash');
+    if (copyButton) {
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(document.getElementById('preview-hash')?.textContent || '');
+          copyButton.textContent = 'Copied!';
+          setTimeout(() => {
+            copyButton.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+          }, 1200);
+        } catch (error) {
+          console.warn('Clipboard copy failed', error);
+        }
+      });
+    }
+  </script>
 </body>
 </html>
 

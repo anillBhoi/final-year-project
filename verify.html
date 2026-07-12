@@ -24,79 +24,288 @@
     <link rel="icon" href="./assets/images/icon.png" />
     <title>Verify Documents</title>
     <style>
+      .verify-page {
+        flex: 1;
+        width: 100%;
+        padding: 1.5rem 0 2.5rem;
+      }
+
       .verify-wrapper {
-        max-width: 1100px;
-        margin: 1.5rem auto;
+        width: 100%;
+        max-width: min(1100px, 96vw);
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.25rem;
       }
+
+      .verify-wrapper .data-upload {
+        max-width: none;
+        align-items: stretch;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
       .verify-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 14px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 1.5rem 1.75rem;
+        border-radius: 20px;
+        border: 1px solid rgba(143, 92, 255, 0.22);
+        align-items: stretch;
+        text-align: left;
       }
+
       .verify-title {
         font-weight: 700;
         letter-spacing: 0.3px;
+        margin-bottom: 0.35rem;
       }
+
       .verify-subtitle {
-        color: #b8c4d1;
+        color: rgba(255, 255, 255, 0.62);
         font-size: 0.95rem;
+        margin-bottom: 1.1rem;
       }
+
       .verify-file-input {
         width: 100%;
-        border: 1px dashed rgba(255, 255, 255, 0.35);
-        border-radius: 10px;
-        padding: 0.7rem;
-        background: rgba(0, 0, 0, 0.2);
-        color: #e6edf3;
+        border: 1px dashed rgba(143, 92, 255, 0.45);
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        background: rgba(0, 0, 0, 0.22);
+        color: rgba(255, 255, 255, 0.88);
+        cursor: pointer;
       }
+
       .verify-file-input::file-selector-button {
         border: 0;
-        border-radius: 8px;
-        padding: 0.45rem 0.8rem;
-        margin-right: 0.8rem;
-        background: #2c7be5;
+        border-radius: 999px;
+        padding: 0.5rem 1rem;
+        margin-right: 0.85rem;
+        background: linear-gradient(135deg, #8f5cff, #3e4ce8);
         color: #fff;
+        font-weight: 600;
+        cursor: pointer;
       }
+
+      .verify-file-input:hover::file-selector-button {
+        filter: brightness(1.08);
+      }
+
+      #note {
+        margin-top: 0.75rem;
+        min-height: 1.25rem;
+      }
+
+      #note h5 {
+        font-size: 0.95rem;
+        margin: 0;
+      }
+
       .verify-actions {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        margin-top: 1rem;
+        justify-content: center;
+        gap: 0.85rem;
+        margin-top: 1.25rem;
+        width: 100%;
       }
+
       .verify-btn {
-        min-width: 170px;
+        min-width: 200px;
       }
+
       #loader {
         width: 34px;
+        height: 34px;
       }
+
       #queued-documents {
-        background: rgba(44, 123, 229, 0.08);
-        border: 1px solid rgba(44, 123, 229, 0.28);
-        border-radius: 10px;
-        padding: 0.85rem;
+        width: 100%;
+        background: rgba(143, 92, 255, 0.08);
+        border: 1px solid rgba(143, 92, 255, 0.28);
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
       }
+
+      #queued-documents-list {
+        color: rgba(255, 255, 255, 0.88);
+        margin-bottom: 0;
+      }
+
       #verification-summary,
       #queued-summary {
         border-radius: 10px;
       }
+
       #verification-results .table {
         border-radius: 10px;
         overflow: hidden;
+        margin-bottom: 0;
       }
+
       #verification-results .table th {
-        font-size: 0.84rem;
+        font-size: 0.78rem;
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
       }
+
       #verification-results .table td {
         vertical-align: middle;
+        font-size: 0.9rem;
       }
+
+      .verify-result-card {
+        overflow: hidden;
+      }
+
+      .verify-result-header {
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .verify-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.65rem;
+      }
+
+      .verify-status-badge.is-verified {
+        color: #b8ffda;
+        background: rgba(34, 197, 94, 0.14);
+        border: 1px solid rgba(34, 197, 94, 0.35);
+      }
+
+      .verify-status-badge.is-failed {
+        color: #ffc9d4;
+        background: rgba(239, 68, 68, 0.14);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+      }
+
+      .verify-result-title {
+        color: #fff;
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.35;
+      }
+
+      .verify-details-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .verify-detail-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.92);
+        word-break: break-all;
+      }
+
+      .verify-detail-item i {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        background: rgba(143, 92, 255, 0.18);
+        color: #c4b5fd;
+        font-size: 0.95rem;
+      }
+
+      .verify-preview-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem 1rem;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .verify-preview-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+        margin-bottom: 0.85rem;
+      }
+
+      .verify-preview-panel #student-document {
+        width: min(100%, 220px);
+        height: auto;
+        max-height: 220px;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(28, 199, 255, 0.35);
+        background: rgba(0, 0, 0, 0.2);
+        margin-top: 0;
+      }
+
+      .verify-action-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+      }
+
+      .verify-view-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1.25rem;
+        border-radius: 999px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: #fff;
+        background: linear-gradient(135deg, #8f5cff, #3e4ce8);
+        box-shadow: 0 14px 36px rgba(123, 66, 255, 0.35);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .verify-view-btn:hover {
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 18px 44px rgba(123, 66, 255, 0.45);
+      }
+
       @media (max-width: 576px) {
+        .verify-card {
+          padding: 1.15rem;
+        }
+
         .verify-actions {
           flex-direction: column;
-          align-items: flex-start;
         }
+
         .verify-btn {
           width: 100%;
         }
@@ -141,21 +350,20 @@
             <li class="nav-item">
               <a class="nav-link" aria-current="page" href="index.html">Home</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item user-nav">
               <a class="nav-link" href="upload.html">Upload</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item user-nav">
               <a class="nav-link active" href="verify.html">Verify</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item user-nav">
               <a class="nav-link" href="delete.html">Delete</a>
             </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="admin.html">Admin</a>
+            <li class="nav-item owner-only d-none">
+              <a class="nav-link" href="dashboard.html">Dashboard</a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" href="about.html">Team</a>
+            <li class="nav-item owner-only d-none">
+              <a class="nav-link" href="admin.html">Admin</a>
             </li>
           </ul>
           <div class="d-flex">
@@ -177,96 +385,132 @@
         </div>
       </div>
     </nav>
-    <div class="container verify-wrapper">
-      <!-- upload form -->
-      <div data-aos="zoom-in" class="col p-3 p-md-4 data-upload my-3 mx-md-2 verify-card">
-        <h4 class="verify-title mb-1 text-light">Verify Multiple Certificates</h4>
-        <p class="verify-subtitle mb-3">
-          Add one or many documents to the queue, then verify all of them together.
-        </p>
-        <input
-          onchange="getVerifySha3()"
-          id="doc-file"
-          class="verify-file-input"
-          type="file"
-          multiple
-        />
-        <span id="note" class="text-danger"></span>
-        <div id="queued-documents" class="mt-3 d-none">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong class="text-light">Queued Documents</strong>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-light"
-              onclick="clearQueuedDocuments()"
-            >
-              Clear All
-            </button>
-          </div>
-          <div id="queued-summary" class="alert alert-info py-2 mb-2" role="alert"></div>
-          <ul id="queued-documents-list" class="mb-0 ps-3"></ul>
-        </div>
-        <div class="verify-actions">
-          <img id="loader" src="files/loader.svg" alt="loader" />
+    <main class="verify-page">
+      <div class="container verify-wrapper">
+        <div data-aos="zoom-in" class="verify-card data-upload">
+          <h4 class="verify-title text-light">Verify Multiple Certificates</h4>
+          <p class="verify-subtitle">
+            Add one or many documents to the queue, then verify all of them together.
+          </p>
           <input
-            onclick="verifyDocuments()"
-            class="btn upload-button main-button verify-btn"
-            type="button"
-            value="Verify All Documents"
-            id="upload_file_button"
+            onchange="getVerifySha3()"
+            id="doc-file"
+            class="verify-file-input"
+            type="file"
+            multiple
+            accept="application/pdf,image/*"
           />
+          <span id="note" class="d-block text-light"></span>
+          <div id="queued-documents" class="mt-3 d-none">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong class="text-light">Queued Documents</strong>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-light"
+                onclick="clearQueuedDocuments()"
+              >
+                Clear All
+              </button>
+            </div>
+            <div id="queued-summary" class="alert alert-info py-2 mb-2" role="alert"></div>
+            <ul id="queued-documents-list" class="mb-0 ps-3"></ul>
+          </div>
+          <div class="verify-actions">
+            <img id="loader" class="d-none" src="files/loader.svg" alt="Verifying…" />
+            <input
+              onclick="verifyDocuments()"
+              class="btn upload-button main-button verify-btn"
+              type="button"
+              value="Verify All Documents"
+              id="upload_file_button"
+            />
+          </div>
         </div>
-      </div>
-      <div id="verification-results" class="d-none my-3 mx-md-2 verify-card p-3 p-md-4">
-        <h5 class="text-light mb-3">Verification Results</h5>
-        <div id="verification-summary" class="alert alert-secondary mb-3" role="alert"></div>
-        <div class="table-responsive">
-          <table class="table table-dark table-striped table-bordered align-middle">
-            <thead>
-              <tr>
-                <th scope="col">File Name</th>
-                <th scope="col">Status</th>
-                <th scope="col">Hash</th>
-                <th scope="col">Issuer</th>
-                <th scope="col">Block</th>
-                <th scope="col">Timestamp</th>
-                <th scope="col">Certificate</th>
-              </tr>
-            </thead>
-            <tbody id="verification-results-body"></tbody>
-          </table>
-        </div>
-      </div>
-      <!-- Verification result -->
-      <div class="box d-none my-3 row gx-0 mx-md-2 transaction-status col-lg">
-        <div class="left col-lg-6 p-3 d-flex flex-column">
-          <span class="p-2 info text-center" id="doc-status"></span>
-          <span class="p-2 info" id="file-hash"></span>
-          <span class="p-2 info" id="contract-address"></span>
-          <span class="p-2 info" id="time-stamps"></span>
-          <span class="p-2 info" id="blockNumber"></span>
-          <span class="p-2 info" id="college-name"></span>
 
-          <span class="d-flex justify-content-center">
-            <a
-              title="View Cirtificate on IPFS"
-              href="#"
-              id="download-document"
-              class="download-link"
-              target="_blank"
-            >
-              View Cirtificate
-            </a>
-          </span>
+        <div id="verification-results" class="d-none verify-card">
+          <h5 class="text-light mb-3">Verification Results</h5>
+          <div id="verification-summary" class="alert alert-secondary mb-3" role="alert"></div>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped table-bordered align-middle mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">File Name</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Hash</th>
+                  <th scope="col">Issuer</th>
+                  <th scope="col">Block</th>
+                  <th scope="col">Timestamp</th>
+                  <th scope="col">Certificate</th>
+                </tr>
+              </thead>
+              <tbody id="verification-results-body"></tbody>
+            </table>
+          </div>
         </div>
+
         <div
-          class="right col-lg-6 d-flex justify-content-center align-items-center"
+          data-aos="fade-up"
+          class="verify-card verify-result-card transaction-status d-none"
         >
-          <!-- <object class="mt-4"  id="student-document" data="" alt="student-document"></object> -->
-          <img class="mt-4" id="student-document" alt="Student document" />
+          <div class="verify-result-header">
+            <span id="verify-status-badge" class="verify-status-badge is-failed">
+              <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+              Not verified
+            </span>
+            <div id="doc-status" class="verify-result-title">Certificate verification</div>
+          </div>
+          <div class="row g-4 align-items-stretch">
+            <div class="col-lg-7">
+              <div class="verify-details-list">
+                <div id="file-hash" class="verify-detail-item d-none">
+                  <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+                  <span></span>
+                </div>
+                <div id="college-name" class="verify-detail-item d-none">
+                  <i class="fa-solid fa-graduation-cap" aria-hidden="true"></i>
+                  <span></span>
+                </div>
+                <div id="contract-address" class="verify-detail-item d-none">
+                  <i class="fa-solid fa-file-contract" aria-hidden="true"></i>
+                  <span></span>
+                </div>
+                <div id="blockNumber" class="verify-detail-item d-none">
+                  <i class="fa-solid fa-cube" aria-hidden="true"></i>
+                  <span></span>
+                </div>
+                <div id="time-stamps" class="verify-detail-item d-none">
+                  <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                  <span></span>
+                </div>
+              </div>
+              <div class="verify-action-group">
+                <a
+                  title="View certificate on IPFS"
+                  href="#"
+                  id="download-document"
+                  class="verify-view-btn d-none"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                  View Certificate
+                </a>
+              </div>
+            </div>
+            <div class="col-lg-5">
+              <div class="verify-preview-panel">
+                <p class="verify-preview-label">Verification preview</p>
+                <img
+                  id="student-document"
+                  src="./files/notvalid.svg"
+                  alt="Certificate verification status illustration"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
     <footer class="footer-dark">
       <div class="container">
         <div class="row">

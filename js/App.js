@@ -1,5 +1,12 @@
+window.certEmoji =
+  window.certEmoji ||
+  function certEmoji(emoji, animation) {
+    const anim = animation || 'emoji-bounce'
+    return `<span class="${anim}" style="font-size: 1.35em; line-height: 1; vertical-align: middle;" aria-hidden="true">${emoji}</span>`
+  }
+
 window.CONTRACT = {
-  address: '0x149f99126Be306f53b9147A7B9f9b8c37039e3c3',
+  address: '0xB01753970CB6A7C7c5b4A5ECFF875DC17568aa7B',
   network: 'https://polygon-amoy.drpc.org', // More reliable RPC endpoint
   explore: 'https://amoy.polygonscan.com/',
   abi: [
@@ -217,27 +224,21 @@ window.CONTRACT = {
 async function connect() {
   if (window.ethereum) {
     try {
-      const selectedAccount = await window.ethereum
-        .request({
-          method: 'eth_requestAccounts',
-        })
-        .then((accounts) => {
-          return accounts[0]
-        })
-        .catch(() => {
-          throw Error('No account selected 👍')
-        })
-
-      window.userAddress = selectedAccount
-      console.log(selectedAccount)
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+      if (!accounts || accounts.length === 0) throw new Error('No account selected')
+      window.userAddress = accounts[0]
+      console.log('Connected account:', window.userAddress)
       window.localStorage.setItem('userAddress', window.userAddress)
       window.location.reload()
-    } catch (error) {}
+    } catch (error) {
+      console.error('MetaMask connect error:', error.message)
+    }
   } else {
     $('#upload_file_button').attr('disabled', true)
     $('#doc-file').attr('disabled', true)
-    // Show The Warning for not detecting wallet
-    document.querySelector('.alert').classList.remove('d-none')
+    // Show The Warning for not detecting wallet (guard: .alert may not exist on all pages)
+    const alertEl = document.querySelector('.alert')
+    if (alertEl) alertEl.classList.remove('d-none')
   }
 }
 
@@ -250,7 +251,9 @@ window.onload = async () => {
   hide_txInfo()
   $('#upload_file_button').attr('disabled', true)
 
-  window.userAddress = window.localStorage.getItem('userAddress')
+  // Guard: treat missing/null/"null" stored value as no-account
+  const _stored = window.localStorage.getItem('userAddress')
+  window.userAddress = (_stored && _stored !== 'null') ? _stored : null
 
   if (window.ethereum) {
     // Use MetaMask provider for user interactions and transactions
@@ -270,39 +273,66 @@ window.onload = async () => {
       window.CONTRACT.abi,
       window.CONTRACT.address,
     )
-    if (window.userAddress.length > 10) {
+    // Check MetaMask accounts directly to confirm the wallet is still connected
+    let metamaskAccounts = []
+    try {
+      metamaskAccounts = await window.ethereum.request({ method: 'eth_accounts' })
+    } catch(e) { console.warn('eth_accounts check failed:', e) }
+
+    // If localStorage has an address but MetaMask no longer lists it, clear it
+    if (window.userAddress && (!metamaskAccounts.length || metamaskAccounts[0].toLowerCase() !== window.userAddress.toLowerCase())) {
+      // MetaMask account differs or is gone — use the live account if available
+      if (metamaskAccounts.length) {
+        window.userAddress = metamaskAccounts[0]
+        window.localStorage.setItem('userAddress', window.userAddress)
+      } else {
+        window.userAddress = null
+        window.localStorage.setItem('userAddress', '')
+      }
+    }
+
+    if (window.userAddress && window.userAddress.length > 10) {
       // let isLocked =await window.ethereum._metamask.isUnlocked();
       //  if(!isLocked) disconnect();
       $('#logoutButton').show()
       $('#loginButton').hide()
-      $('#userAddress')
-        .html(`<i class="fa-solid fa-address-card mx-2 text-primary"></i>${truncateAddress(
-        window.userAddress,
-      )}
-       <a class="text-info" href="${window.CONTRACT.explore}/address/${
-        window.userAddress
-      }" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-square-arrow-up-right text-warning"></i></a>  
-       </a>`)
-
-      if (window.location.pathname == '/admin.html') {
-        try {
-          await getCounters()
-          // Also call admin.js applyAdminUI if it exists
-          if (typeof applyAdminUI === 'function') {
-            await applyAdminUI()
-          }
-        } catch(e) {
-          console.log('Admin page init error:', e)
-        }
-      }
+      renderAccountWalletField()
 
       await getExporterInfo()
+      await updateOwnerOnlyUI()
+      await guardOwnerPageAccess()
+
+      if (window.location.pathname.includes('admin.html')) {
+        try {
+          if (typeof getCounters === 'function') await getCounters()
+          if (typeof applyAdminUI === 'function') await applyAdminUI()
+        } catch (e) {
+          console.log('Admin page init error:', e)
+        }
+        $('.wallet-status').removeClass('d-none')
+      }
+
+      if (window.location.pathname.includes('dashboard.html')) {
+        $('.wallet-status').removeClass('d-none')
+        try {
+          if (typeof initDashboardPage === 'function') {
+            await initDashboardPage()
+          }
+        } catch (e) {
+          console.log('Dashboard page init error:', e)
+        }
+      }
       applyRoleUI()
       await get_ChainID()
       await get_ethBalance()
-      $('#Exporter-info').html(
-        `<i class="fa-solid fa-building-columns mx-2 text-warning"></i>${window.info}`,
-      )
+      const exporterInfoEl = document.getElementById('Exporter-info')
+      if (exporterInfoEl) {
+        if (exporterInfoEl.classList.contains('account-card-title')) {
+          exporterInfoEl.textContent = window.info || 'Authorized exporter'
+        } else {
+          exporterInfoEl.innerHTML = `<i class="fa-solid fa-building-columns mx-2 text-warning"></i>${window.info}`
+        }
+      }
 
       setTimeout(() => {
         listen()
@@ -314,6 +344,10 @@ window.onload = async () => {
       $('#doc-file').attr('disabled', true)
       $('.box').addClass('d-none')
       $('.loading-tx').addClass('d-none')
+      window.isContractOwner = false
+      document.querySelectorAll('.owner-only').forEach((el) => el.classList.add('d-none'))
+      document.querySelectorAll('.user-nav').forEach((el) => el.classList.remove('d-none'))
+      await guardOwnerPageAccess()
     }
   } else {
     //No metamask detected
@@ -322,7 +356,9 @@ window.onload = async () => {
     $('.box').addClass('d-none')
     $('#upload_file_button').attr('disabled', true)
     $('#doc-file').attr('disabled', true)
-    document.querySelector('.alert').classList.remove('d-none')
+    await guardOwnerPageAccess()
+    const alertEl = document.querySelector('.alert')
+    if (alertEl) alertEl.classList.remove('d-none')
 
     // alert("Please download metamask extension first.\nhttps://metamask.io/download/");
     // window.location = "https://metamask.io/download/"
@@ -334,68 +370,149 @@ function hide_txInfo() {
 }
 
 function show_txInfo() {
-  $('.transaction-status').removeClass('d-none')
+  const panel = document.querySelector('.transaction-status')
+  if (panel) {
+    panel.classList.remove('d-none')
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
 }
+
+function txDetailRow(label, valueHtml, iconClass) {
+  return `<div class="tx-detail-item">
+    <div class="tx-detail-icon"><i class="${iconClass}" aria-hidden="true"></i></div>
+    <div class="tx-detail-text">
+      <span class="tx-detail-label">${label}</span>
+      <span class="tx-detail-value">${valueHtml}</span>
+    </div>
+  </div>`
+}
+
+function usesAccountCardLayout() {
+  const el = document.getElementById('userAddress')
+  return el && el.classList.contains('account-stat-value--wallet')
+}
+
+function shortChainLabel(name) {
+  const labels = {
+    'Ethereum Main Network (Mainnet)': 'Ethereum Mainnet',
+    'Polygon Amoy Testnet': 'Polygon Amoy',
+    'Polygon Test Network': 'Polygon Mumbai',
+  }
+  return labels[name] || name
+}
+
+function renderAccountWalletField() {
+  if (!window.userAddress) return
+  const el = document.getElementById('userAddress')
+  if (!el) return
+  if (usesAccountCardLayout()) {
+    el.innerHTML = `<span class="account-address-text" title="${window.userAddress}">${truncateAddress(
+      window.userAddress,
+    )}</span>
+      <a href="${window.CONTRACT.explore}/address/${window.userAddress}" target="_blank" rel="noopener noreferrer" title="View on explorer" aria-label="View wallet on block explorer">
+        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+      </a>`
+  } else {
+    el.innerHTML = `<i class="fa-solid fa-address-card mx-2 text-primary"></i>${truncateAddress(
+      window.userAddress,
+    )}
+      <a class="text-info" href="${window.CONTRACT.explore}/address/${window.userAddress}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-square-arrow-up-right text-warning"></i></a>`
+  }
+}
+
+function renderAccountNetworkField() {
+  const network = document.getElementById('network')
+  if (!network || !window.chainID) return
+  if (network.classList.contains('account-stat-value--network')) {
+    const label = shortChainLabel(window.chainID)
+    network.innerHTML = `<i class="fa-solid fa-circle-nodes" style="color:#1cc7ff" aria-hidden="true"></i><span class="account-network-text" title="${window.chainID}">${label}</span>`
+  } else {
+    network.innerHTML = `<i class="text-info fa-solid fa-circle-nodes mx-2"></i>${window.chainID}`
+  }
+}
+
+function clearAccountCardFields() {
+  const empty = '—'
+  ;['userAddress', 'userBalance', 'network', 'num-hashes', 'num-exporters', 'account-role'].forEach(
+    (id) => {
+      const el = document.getElementById(id)
+      if (el) el.textContent = empty
+    },
+  )
+  const exporterInfo = document.getElementById('Exporter-info')
+  if (exporterInfo) exporterInfo.textContent = empty
+}
+
 async function get_ethBalance() {
   await web3.eth.getBalance(window.userAddress, function (err, balance) {
-    if (err === null) {
-      $('#userBalance').html(
-        "<i class='fa-brands fa-gg-circle mx-2 text-danger'></i>" +
-          web3.utils.fromWei(balance).substr(0, 6) +
-          '',
-      )
-    } else $('#userBalance').html('n/a')
+    const el = document.getElementById('userBalance')
+    if (!el) return
+    if (err !== null) {
+      el.textContent = 'n/a'
+      return
+    }
+    const amount = Number(web3.utils.fromWei(balance)).toFixed(4)
+    if (el.classList.contains('account-stat-value--balance')) {
+      el.innerHTML = `<i class="fa-solid fa-coins" style="color:#e34dff" aria-hidden="true"></i><span title="${amount} MATIC">${amount}</span>`
+    } else {
+      el.innerHTML =
+        "<i class='fa-brands fa-gg-circle mx-2 text-danger'></i>" + amount
+    }
   })
 }
 
 if (window.ethereum) {
   window.ethereum.on('accountsChanged', function (accounts) {
-    connect()
-    // After reconnect, UI will be reapplied. For immediate feedback try:
-    setTimeout(() => { try { applyRoleUI() } catch(e){} }, 0)
+    if (accounts && accounts.length > 0) {
+      // User switched to a different account — save it and reload to re-init
+      window.localStorage.setItem('userAddress', accounts[0])
+    } else {
+      // User disconnected all accounts from MetaMask
+      window.localStorage.setItem('userAddress', '')
+    }
+    window.location.reload()
   })
 }
 
 function printUploadInfo(result) {
-  $('#transaction-hash').html(
-    `<a target="_blank" title="View Transaction at Polygon Scan" href="${window.CONTRACT.explore}/tx/` +
-      result.transactionHash +
-      '"+><i class="fa fa-check-circle font-size-2 mx-1 text-white mx-1"></i></a>' +
-      truncateAddress(result.transactionHash),
-  )
-  $('#file-hash').html(
-    `<i class="fa-solid fa-hashtag mx-1"></i> ${truncateAddress(
-      window.hashedfile,
-    )}`,
-  )
-  $('#contract-address').html(
-    `<i class="fa-solid fa-file-contract mx-1"></i> ${truncateAddress(
-      result.to,
-    )}`,
-  )
-  $('#time-stamps').html('<i class="fa-solid fa-clock mx-1"></i>' + getTime())
-  $('#blockNumber').html(
-    `<i class="fa-solid fa-link mx-1"></i>${result.blockNumber}`,
-  )
-  $('#blockHash').html(
-    `<i class="fa-solid fa-shield mx-1"></i> ${truncateAddress(
-      result.blockHash,
-    )}`,
-  )
-  $('#to-netowrk').html(
-    `<i class="fa-solid fa-chart-network"></i> ${window.chainID}`,
-  )
-  $('#to-netowrk').hide()
-  $('#gas-used').html(
-    `<i class="fa-solid fa-gas-pump mx-1"></i> ${result.gasUsed} Gwei`,
-  )
+  const txUrl = `${window.CONTRACT.explore}tx/${result.transactionHash}`
+  const details = [
+    txDetailRow(
+      'Transaction',
+      `<a target="_blank" rel="noopener noreferrer" title="View on Polygonscan" href="${txUrl}">${truncateAddress(result.transactionHash)} <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size:0.75em"></i></a>`,
+      'fa-solid fa-circle-check',
+    ),
+    txDetailRow(
+      'Document hash',
+      truncateAddress(window.hashedfile),
+      'fa-solid fa-hashtag',
+    ),
+    txDetailRow(
+      'Contract',
+      truncateAddress(result.to),
+      'fa-solid fa-file-contract',
+    ),
+    txDetailRow('Timestamp', getTime(), 'fa-solid fa-clock'),
+    txDetailRow('Block number', String(result.blockNumber), 'fa-solid fa-cube'),
+    txDetailRow(
+      'Block hash',
+      truncateAddress(result.blockHash),
+      'fa-solid fa-shield-halved',
+    ),
+    txDetailRow('Gas used', `${result.gasUsed} Gwei`, 'fa-solid fa-gas-pump'),
+  ].join('')
+
+  const detailsEl = document.getElementById('tx-details')
+  if (detailsEl) {
+    detailsEl.innerHTML = details
+  }
   $('#loader').addClass('d-none')
   $('#upload_file_button').addClass('d-block')
   show_txInfo()
   get_ethBalance()
 
   $('#note').html(`<h5 class="text-info">
-   Transaction Confirmed to the BlockChain <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😊</span><i class="mx-2 text-info fa fa-check-circle" aria-hidden="true"></i>
+   Transaction Confirmed to the BlockChain ${window.certEmoji('😎', 'emoji-bounce')}<i class="mx-2 text-info fa fa-check-circle" aria-hidden="true"></i>
    </h5>`)
   listen()
 }
@@ -404,12 +521,12 @@ function generateQRCode() {
   const qrWrap = document.getElementById('qrcode')
   if (!qrWrap || !window.hashedfile) return
 
-  const verifyUrl = new URL(`verify.html?hash=${window.hashedfile}`, window.location.href).href
+  const verifyUrl = new URL(`verify.html?hash=${window.hashedfile}&autoVerify=1`, window.location.href).href
   qrWrap.innerHTML = ''
   new QRCode(qrWrap, {
     text: verifyUrl,
-    width: 180,
-    height: 180,
+    width: 168,
+    height: 168,
     colorDark: '#000000',
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.H,
@@ -516,7 +633,7 @@ async function deleteHash() {
 
       .on('receipt', function (receipt) {
         $('#note').html(
-          `<h5 class="text-info p-1 text-center">Document Deleted <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😳</span></h5>`,
+          `<h5 class="text-info p-1 text-center">Document Deleted ${window.certEmoji('😳', 'emoji-bounce')}</h5>`,
         )
 
         $('#loader').addClass('d-none')
@@ -585,20 +702,19 @@ async function get_ChainID() {
         window.chainID = 'Unknown ChainID'
         break
     }
-    let network = document.getElementById('network')
-    if (network) {
-      document.getElementById(
-        'network',
-      ).innerHTML = `<i class="text-info fa-solid fa-circle-nodes mx-2"></i>${window.chainID}`
-    }
+    renderAccountNetworkField()
   } catch (error) {
     console.error('Error getting chain ID:', error);
     window.chainID = 'Network Error'
-    let network = document.getElementById('network')
+    const network = document.getElementById('network')
     if (network) {
-      document.getElementById(
-        'network',
-      ).innerHTML = `<i class="text-danger fa-solid fa-exclamation-triangle mx-2"></i>Network Error`
+      if (network.classList.contains('account-stat-value--network')) {
+        network.innerHTML =
+          '<i class="fa-solid fa-triangle-exclamation" style="color:#f87171"></i><span class="account-network-text">Network error</span>'
+      } else {
+        network.innerHTML =
+          '<i class="text-danger fa-solid fa-exclamation-triangle mx-2"></i>Network Error'
+      }
     }
   }
 }
@@ -750,7 +866,7 @@ async function testTransactionSimulation(address, info) {
 
 function get_Sha3() {
   hide_txInfo()
-  $('#note').html(`<h5 class="text-warning">Hashing Your Document <span style="font-size: 20px; display: inline-block; animation: pulse 1.5s infinite;">😴</span>...</h5>`)
+  $('#note').html(`<h5 class="text-warning">Hashing Your Document ${window.certEmoji('😴', 'emoji-pulse')}...</h5>`)
   $('#upload_file_button').attr('disabled', false)
 
   const file = document.getElementById('doc-file').files[0]
@@ -767,10 +883,10 @@ function get_Sha3() {
         const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
         window.hashedfile = web3.utils.soliditySha3('0x' + hex)
         console.log(`Document Hash : ${window.hashedfile}`)
-        $('#note').html(`<h5 class="text-center text-info">Document Hashed  <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😎</span> </h5>`)
+        $('#note').html(`<h5 class="text-center text-info">Document Hashed ${window.certEmoji('😎', 'emoji-bounce')}</h5>`)
       } catch (e) {
         console.log('hash error', e)
-        $('#note').html(`<h5 class="text-center text-danger">Hashing failed</h5>`)
+        $('#note').html(`<h5 class="text-center text-danger">Hashing failed ${window.certEmoji('😢', 'emoji-shake')}</h5>`)
         window.hashedfile = null
       }
     }
@@ -789,9 +905,26 @@ function disconnect() {
   $('#logoutButton').hide()
   $('#loginButton').show()
   window.userAddress = null
+  window.isExporter = false
+  // Store empty string — NOT null — so localStorage.getItem() returns '' (falsy)
+  window.localStorage.setItem('userAddress', '')
+  // Clear displayed wallet info
+  if (usesAccountCardLayout()) {
+    clearAccountCardFields()
+  } else {
+    $('#userAddress').html('')
+    $('#userBalance').html('')
+    $('#network').html('')
+    $('#Exporter-info').html('')
+  }
   $('.wallet-status').addClass('d-none')
-  window.localStorage.setItem('userAddress', null)
+  $('.box').addClass('d-none')
   $('#upload_file_button').addClass('disabled')
+  window.isContractOwner = false
+  document.querySelectorAll('.owner-only').forEach((el) => el.classList.add('d-none'))
+  document.querySelectorAll('.user-nav').forEach((el) => el.classList.remove('d-none'))
+  // Re-apply role UI to hide exporter-only elements
+  try { applyRoleUI() } catch(e) {}
 }
 
 function truncateAddress(address) {
@@ -1019,6 +1152,43 @@ async function addExporter() {
   }
 }
 
+async function checkIsContractOwner() {
+  if (!window.userAddress || !window.contractRPC) return false
+  try {
+    const owner = await window.contractRPC.methods.owner().call()
+    return owner.toLowerCase() === window.userAddress.toLowerCase()
+  } catch (error) {
+    console.error('Error checking contract owner:', error)
+    return false
+  }
+}
+
+async function updateOwnerOnlyUI() {
+  const isOwner = window.userAddress ? await checkIsContractOwner() : false
+  window.isContractOwner = isOwner
+  document.querySelectorAll('.owner-only').forEach((el) => {
+    if (isOwner) el.classList.remove('d-none')
+    else el.classList.add('d-none')
+  })
+  document.querySelectorAll('.user-nav').forEach((el) => {
+    if (isOwner) el.classList.add('d-none')
+    else el.classList.remove('d-none')
+  })
+}
+
+async function guardOwnerPageAccess() {
+  const path = window.location.pathname
+  const isOwnerPage =
+    path.includes('admin.html') || path.includes('dashboard.html')
+  if (!isOwnerPage) return
+  if (!window.userAddress) {
+    window.location.replace('index.html')
+    return
+  }
+  const isOwner = await checkIsContractOwner()
+  if (!isOwner) window.location.replace('index.html')
+}
+
 async function getExporterInfo() {
   await window.contractRPC.methods
     .getExporterInfo(window.userAddress)
@@ -1035,6 +1205,7 @@ async function getExporterInfo() {
 function applyRoleUI() {
   try {
     const isExporter = !!window.isExporter
+    const isAdminPage = window.location.pathname.includes('admin.html')
     // Show/hide common exporter-only sections if present
     if (isExporter) {
       // Hide legacy uploader for exporters
@@ -1047,7 +1218,11 @@ function applyRoleUI() {
       document.querySelectorAll('.exporter-only').forEach(el => { el.classList.remove('d-none') })
     } else {
       try { document.getElementById('legacy-uploader').style.display = 'block' } catch(e){}
-      $('.box').addClass('d-none')
+      if (isAdminPage) {
+        $('.wallet-status').removeClass('d-none')
+      } else {
+        $('.box').addClass('d-none')
+      }
       // keep loading hidden when not exporter
       $('.loading-tx').addClass('d-none')
       $('#recent-header').hide()
@@ -1426,7 +1601,7 @@ async function generateAndUploadCertificate() {
           .on('receipt', function (receipt) {
             printUploadInfo(receipt)
             generateQRCode()
-            $('#note').html(`<h5 class=\"text-success\">Certificate published successfully.</h5>`)
+            $('#note').html(`<h5 class=\"text-success\">Certificate published successfully. ${window.certEmoji('😎', 'emoji-bounce')}</h5>`)
             try { showToast('Certificate generated and uploaded successfully.','success') } catch(e){}
             // Offer local download without page reload
             try {
@@ -1460,7 +1635,7 @@ async function generateAndUploadCertificate() {
 
   } catch (e) {
     console.error(e)
-    $('#note').html(`<h5 class="text-danger">${e.message || 'Certificate generation failed'}</h5>`)
+    $('#note').html(`<h5 class="text-danger">${e.message || 'Certificate generation failed'} ${window.certEmoji('😢', 'emoji-shake')}</h5>`)
   } finally {
     $('#loader').addClass('d-none')
     // Re-enable button after the flow finishes

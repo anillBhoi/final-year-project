@@ -9,47 +9,101 @@
     <title>CertiFlex</title>
     <link rel="stylesheet" href="./css/loader.css">
     <link href="./css/bootstrap.min.css" rel="stylesheet" />
+    <script src="node_modules\web3\dist\web3.min.js"></script>
+    <script src="js/App.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />    <link href="./css/aos.min.css" rel="stylesheet" />
     <link href="./css/main.css" rel="stylesheet" />
     <link rel="icon" href="./assets/images/icon.png" />
 
     <style>
-      /* Ensures the navbar sits on top */
       .navbar {
-          z-index: 1030; /* Bootstrap's standard high z-index for fixed elements */
-          position: fixed !important; /* Make it fixed to the top */
+          z-index: 1030;
+          position: fixed !important;
           width: 100%;
           top: 0;
-      }
-      /* Container for the video and overlaid text */
-      #header {
-          position: relative; /* Essential for containing the absolutely positioned text */
-          padding-top: 0 !important; /* Remove section padding */
-          padding-bottom: 0 !important;
-          /* Set height equal to video height + margins for proper flow */
-          height: 800px; /* Adjusted to cover the video (650px) plus margins */
-      }
-      /* Positioning the text content over the video */
-      #header .text-overlay {
-          position: absolute;
-          top: 50%; /* Center vertically (adjust as needed) */
-          transform: translateY(-50%); /* Center vertically (adjust as needed) */
           left: 0;
-          right: 0;
-          z-index: 10; /* Above the video */
       }
-      /* Adjust video margins to be only internal to the section */
-      #myVideo {
-          margin: 5px auto 50px auto !important; /* Use original margins */
+      #header {
+          position: relative;
+          padding: 0;
+          min-height: 100vh;
+          height: 100vh;
+          max-height: 100vh;
+          overflow: hidden;
+          isolation: isolate;
+          z-index: 1;
+          box-sizing: border-box;
+          background: radial-gradient(circle at top left, rgba(136, 34, 255, 0.22), transparent 22%),
+                      radial-gradient(circle at bottom right, rgba(22, 0, 40, 0.30), transparent 25%),
+                      linear-gradient(180deg, #05020d 0%, #02020a 28%, #05020d 60%, #09040f 100%);
       }
-      /* Adjust the first section after home to account for the fixed navbar */
+      .hero-video-wrap {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          pointer-events: none;
+          overflow: hidden;
+      }
+      .hero-video-wrap video {
+          position: relative;
+          width: auto;
+          max-width: min(748px, 96.8vw);
+          height: auto;
+          max-height: calc((100vh - 140px) * 1.1);
+          object-fit: contain;
+          object-position: center;
+          opacity: 1;
+          filter: brightness(1.1);
+      }
+      .hero-backdrop {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 15% 20%, rgba(146, 57, 255, 0.32), transparent 18%),
+                      radial-gradient(circle at 35% 70%, rgba(109, 37, 255, 0.18), transparent 22%),
+                      radial-gradient(circle at 85% 15%, rgba(90, 20, 145, 0.46), transparent 16%),
+                      linear-gradient(180deg, rgba(4, 4, 18, 0.18), rgba(12, 2, 32, 0.78));
+          z-index: 1;
+      }
+      #header .text-overlay {
+          position: absolute !important;
+          top: auto !important;
+          bottom: 12% !important;
+          left: 5% !important;
+          right: auto !important;
+          width: clamp(320px, 34%, 420px) !important;
+          z-index: 2 !important;
+          padding: 0 !important;
+          text-align: left !important;
+          transform: none !important;
+      }
+      #header .text-overlay .headline {
+          font-size: clamp(3.2rem, 5.8vw, 5.4rem);
+      }
+      #header .text-overlay .para {
+          max-width: 100%;
+      }
+      #header .text-overlay .my-3 {
+          margin-top: 2rem;
+      }
+      @media (max-width: 992px) {
+          #header .text-overlay {
+              position: static;
+              width: 100%;
+              padding: 4rem 1.5rem 2rem;
+          }
+          .hero-video-wrap video {
+              object-position: center top;
+          }
+      }
       .information {
-          padding-top: 5rem; /* Add extra padding to the content below the home section */
-      }
-      /* If the background is dark, the "Go Verify" button text needs to be visible */
-      .btn.bg-danger {
-          z-index: 11; /* Ensure button is above video */
-          position: relative; 
+          position: relative;
+          z-index: 2;
+          margin-top: 0;
+          padding-top: 5rem;
+          background: linear-gradient(180deg, #05020d 0%, #06020f 40%, #0a0417 100%);
       }
     </style>
     <style>
@@ -66,6 +120,42 @@
   0%, 100% { transform: rotate(0deg); }
   25% { transform: rotate(-5deg); }
   75% { transform: rotate(5deg); }
+}
+.emoji-bounce,
+.emoji-pulse,
+.emoji-shake {
+  display: inline-block;
+  transform-origin: center;
+  transition: transform 0.2s ease;
+}
+.emoji-bounce {
+  animation: bounce 1s infinite;
+}
+.emoji-pulse {
+  animation: pulse 1s infinite;
+}
+.emoji-shake {
+  animation: shake 0.5s infinite;
+}
+.emoji-bounce:hover,
+.emoji-pulse:hover,
+.emoji-shake:hover {
+  transform: scale(1.15);
+}
+.hero-cta {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  padding: 12px 30px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  display: inline-block;
+}
+.hero-cta:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.3);
 }
 </style>
   </head>
@@ -87,215 +177,266 @@
               <li class="nav-item">
               <a class="nav-link active" aria-current="page" href="index.html">Home</a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item user-nav">
               <a class="nav-link " href="upload.html">Upload </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item user-nav">
               <a class="nav-link" href="verify.html">Verify </a>
               </li>
-              <li class="nav-item">
+              <li class="nav-item user-nav">
               <a class="nav-link" href="delete.html">Delete </a>
               </li>
-
-              <li class="nav-item">
-                <a class="nav-link" href="admin.html">Admin</a>
-                </li>            
-                  <li class="nav-item">
+              <li class="nav-item owner-only d-none">
+                <a class="nav-link" href="dashboard.html">Dashboard</a>
               </li>
+              <li class="nav-item owner-only d-none">
+                <a class="nav-link" href="admin.html">Admin</a>
+                </li>
           </ul>
+          <div class="d-flex align-items-center ms-auto">
+            <button id="loginButton" onclick="connect()" class="btn main-button me-2">Login</button>
+          </div>
+          <div class="d-flex align-items-center">
+            <button id="logoutButton" onclick="disconnect()" class="btn main-button">Logout</button>
+          </div>
           </div>
         </div>
         </nav>
 
-    <section class="home" id="header"> 
-        
-        <video autoplay muted loop id="myVideo"
-          style="display: block;
-                 width: 100vw;
-                 height: 787px;
-                 margin: 65px auto 50px auto; /* Original margins restored */
-                 object-fit: cover;
-                 border-radius: 15px;
-                 box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
-                 background-color: #000;">
+    <section class="home" id="header">
+      <div class="hero-video-wrap">
+        <video autoplay muted loop id="myVideo">
           <source src="./files/videoeth.mp4" type="video/mp4">
           Your browser does not support the video tag.
         </video>
-
-
-      <div class="container text text-light py-5 text-overlay" data-aos="fade-right"> 
-        <h1 class="headline text">
-          Build <span class="text-info">trust</span>  <br>
+        <div class="hero-backdrop"></div>
+      </div>
+      <div class="container text text-light text-overlay" data-aos="fade-right">
+        <h1 class="headline text-white">
+          Build <span class="text-info">trust</span>
         </h1>
-        <p class="para  py-3">
-          The Certiflex platform is a leading Certificate Verification platform <br> 
-          designed to bring efficiency and security to your operations.
+        <p class="para py-3">
+          The Certiflex platform is a leading Certificate Verification platform designed to bring efficiency and security to your operations.
         </p>
-
-        <!-- <div class="my-3">
-          <a class="btn bg-danger text-white" href="verify.html">Go Verify</a>
-        </div> -->
-        
-       <div class="my-3">
-  <a class="btn text-white" href="verify.html"
-     style="
-       background: linear-gradient(135deg, #6a11cb, #2575fc);
-       padding: 12px 30px;
-       border-radius: 6px;
-       text-decoration: none;
-       font-size: 16px;
-       font-weight: 600;
-       transition: all 0.3s ease;
-       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-       display: inline-block;
-     "
-     onmouseover="this.style.transform='scale(1.08)'; this.style.boxShadow='0 6px 14px rgba(0,0,0,0.3)';"
-     onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 10px rgba(0,0,0,0.2)';">
-     Go Verify
-  </a>
-</div>
-
-
-        
+        <div class="my-3">
+          <a class="btn text-white hero-cta" href="verify.html">
+             Go Verify
+          </a>
+        </div>
       </div>
-      </section>
+    </section>
     <section class="information">
-      <div class="container-fluid">
-        <div class="row text-light">
-          <div class="col-lg-4 text-center p-5" data-aos="zoom-in">
-            <img src="files/undraw_investment_data_re_sh9x.svg" width="150">   
-            <h4 class="py-3">Less Cost</h4>
-            <p class="para-light">
-              with Certiflex uploading any Certificate cost only <span class="text-warning"> 0.01 &dollar; <span style="font-size: 24px; display: inline-block; animation: bounce 1s infinite;">😮</span></span>
-              so you can upload without caring about the Operation cost
-            </p>
-          </div>
-          <div class="col-lg-4 text-center p-5" data-aos="zoom-in">
-            <img src="files/undraw_time_management_re_tk5w.svg" width="150">   
-            <h4 class="py-3">Fast Process</h4>
-            <p class="para-light">
-              Verfying Cirtificates  takes just <span class="text-warning"> 1 Second <span style="font-size: 24px; display: inline-block; animation: pulse 1s infinite;">😳</span> </span>
-            </p>
-          </div>
-          <div class="col-lg-4 text-center p-5" data-aos="zoom-in">
-            <img src="files/securefiles.svg" width="150">   
-            <h4 class="py-3">Secure</h4>
-            <p class="para-light">
-              100% Secure & Transparent all operations With Blockchain Technology <span style="font-size: 24px; display: inline-block; animation: shake 0.5s infinite;">🔒</span>
-            </p>
-          </div>
-        </div>
-      </div>
-      </section>
-    <section id="about" class="about d-flex align-items-center text-light py-5  " >
-      <div class="container">
-        <div class="row d-flex align-items-center">
-          <div class="col-lg-7" data-aos="fade-right">
-            <p  class="main-header-section">ABOUT US</p>
-            <h1>
-              WE ARE TOP <br />
-              
-            </h1>
-            <p class="py-2 para-light">
-              Introducing "Certiflex": A Blockchain-Based Project for Secure Certificate Storage
-              In today's digital age, it's more important than ever to keep our important Certificates safe and secure. But traditional storage methods such as physical filing cabinets or cloud storage services can be vulnerable to hacking, data breaches, and other security threats. That's where BlockSafe comes in. BlockSafe is a blockchain-based project that allows users to securely store their important Certificates in a decentralized, tamper-proof network.
-              With BlockSafe, users can upload their Certificates to the blockchain, which records the Certificate's unique digital signature and stores it in a block that is linked to the previous block in the chain. This creates a secure and immutable record of the Certificate's existence and ensures that it cannot be altered or deleted without the owner's permission.
-            </p>
-            <p class="py-2 para-light">
-              To access their Certificates, users simply need to log in to their BlockSafe account and provide their private key, which unlocks the block and allows them to view, download, or share their Certificates as needed.
-              BlockSafe also offers a range of additional security features, such as two-factor authentication, encryption, and redundant backups, to ensure that users' Certificates are protected from unauthorized access or loss.
-              So whether you're a small business owner looking to secure your financial records, a healthcare provider needing to store patient information securely, or simply someone who wants to keep their personal Certificates safe, BlockSafe provides a reliable and secure solution for Certificate storage.
-              And with the power of blockchain technology behind it, you can trust that your Certificates are safe and secure, now and in the future.
-            </p>
-
-            <div class="my-3">
-              <a class="btn bg-white" href="#your-link">Learn More</a>
-            </div>
-          </div>
-          <div class="col-lg-5 text-center py-4 py-sm-0" data-aos="fade-down">
-            <img
-              class="img-fluid"
-              src="./files/about.jpg"
-              alt="about"
-            />
-          </div>
-        </div>
-        </div>
-      </section>
-    <section id="ourwork"  class="work d-flex align-items-center py-5">
-      <div class="container text-light">
-        <div class="row">
-          <div class="col-lg-6 d-flex align-items-center" data-aos="fade-right">
-            <img class="img-fluid" src="./files/work.jpg" alt="work" />
-          </div>
-          <div class="col-lg-5 d-flex align-items-center px-4 py-3" data-aos="zoom-in">
-            <div class="row">
-              <div class="text-center text-lg-start py-4 pt-lg-0">
-                <p class="main-header-section">OUR WORK</p>
-                <h2 class="py-2">Explore unlimited possibilities</h2>
+      <div class="container-fluid px-3 px-lg-4">
+        <div class="row text-light g-4 justify-content-center">
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-duration="700">
+            <div class="star-card">
+              <div class="star-card-inner text-center">
+                <img src="files/undraw_investment_data_re_sh9x.svg" width="150" alt="Less cost">
+                <h4 class="py-3">Less Cost</h4>
                 <p class="para-light">
-                 Generate, verify, and trust certificates like never before — powered by blockchain for complete transparency and security.
+                  with Certiflex uploading any Certificate cost only <span class="text-warning"> 0.01 &dollar; <span class="emoji-bounce" style="font-size: 24px;">😮</span></span>
+                  so you can upload without caring about the Operation cost
                 </p>
               </div>
-              <div class="container" data-aos="fade-up">
-                <div class="row g-5">
-                  <div class="col-6 text-start">
-                    <i class="fas fa-briefcase fa-2x text-start"></i>
-                    <h2
-                      class="purecounter"
-                      data-purecounter-start="0"
-                      data-purecounter-end="128"
-                      data-purecounter-duration="1"
-                    >
-                      1
-                    </h2>
-                    <p>UNIVERSITIES SERVED</p>
-                  </div>
-                  <div class="col-6">
-                    <i class="fas fa-award fa-2x"></i>
-                    <h2
-                      class="purecounter"
-                      data-purecounter-start="0"
-                      data-purecounter-end="2917"
-                      data-purecounter-duration="1"
-                    >
-                      1
-                    </h2>
-                    <p>VERIFIED CERTIFICATES</p>
-                  </div>
-                  <div class="col-6">
-                    <i class="fas fa-users fa-2x"></i>
-                    <h2
-                      class="purecounter"
-                      data-purecounter-start="0"
-                      data-purecounter-end="1255"
-                      data-purecounter-duration="1"
-                    >
-                      1
-                    </h2>
-                    <p>ACTIVE EXPORTERS</p>
-                  </div>
-                  <div class="col-6">
-                    <i class="fas fa-clock fa-2x"></i>
-                    <h2
-                      class="purecounter"
-                      data-purecounter-start="0"
-                      data-purecounter-end="1157"
-                      data-purecounter-duration="1"
-                    >
-                      1
-                    </h2>
-                    <p>GOOD REVIEWS</p>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-duration="700" data-aos-delay="150">
+            <div class="star-card">
+              <div class="star-card-inner text-center">
+                <img src="files/undraw_time_management_re_tk5w.svg" width="150" alt="Fast process">
+                <h4 class="py-3">Fast Process</h4>
+                <p class="para-light">
+                  Verfying Cirtificates  takes just <span class="text-warning"> 1 Second <span class="emoji-pulse" style="font-size: 24px;">😳</span> </span>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-duration="700" data-aos-delay="300">
+            <div class="star-card">
+              <div class="star-card-inner text-center">
+                <img src="files/securefiles.svg" width="150" alt="Secure">
+                <h4 class="py-3">Secure</h4>
+                <p class="para-light">
+                  100% Secure & Transparent all operations With Blockchain Technology <span class="emoji-shake" style="font-size: 24px;">🔒</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="home-section how-it-works text-light py-5">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <p class="main-header-section d-inline-block">HOW IT WORKS</p>
+          <h2 class="section-title mt-2">From upload to proof in four steps</h2>
+          <p class="para-light section-subtitle mx-auto">
+            CertiFlex anchors every certificate on-chain so issuers, holders, and verifiers share one source of truth.
+          </p>
+        </div>
+        <div class="row g-4">
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="0">
+            <div class="step-card">
+              <span class="step-number">01</span>
+              <div class="step-icon"><i class="fa-solid fa-wallet"></i></div>
+              <h4>Connect Wallet</h4>
+              <p class="para-light">Link MetaMask to Polygon Amoy and sign in as an authorized exporter or verifier.</p>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="100">
+            <div class="step-card">
+              <span class="step-number">02</span>
+              <div class="step-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+              <h4>Upload Certificate</h4>
+              <p class="para-light">Submit the PDF or document. A unique hash is generated and sent to the smart contract.</p>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="200">
+            <div class="step-card">
+              <span class="step-number">03</span>
+              <div class="step-icon"><i class="fa-solid fa-link"></i></div>
+              <h4>Stored On-Chain</h4>
+              <p class="para-light">The hash is immutably recorded on the blockchain—tamper-proof and publicly auditable.</p>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="300">
+            <div class="step-card">
+              <span class="step-number">04</span>
+              <div class="step-icon"><i class="fa-solid fa-circle-check"></i></div>
+              <h4>Verify Instantly</h4>
+              <p class="para-light">Anyone can upload the same file and confirm it matches the on-chain record in seconds.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who It's For -->
+    <section id="use-cases" class="home-section use-cases text-light py-5">
+      <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+          <p class="main-header-section d-inline-block">WHO IT'S FOR</p>
+          <h2 class="section-title mt-2">Built for every stakeholder in credentialing</h2>
+          <p class="para-light section-subtitle mx-auto">
+            Whether you issue, hold, or check certificates, CertiFlex removes doubt from the verification process.
+          </p>
+        </div>
+        <div class="row g-4 justify-content-center">
+          <div class="col-lg-4 col-md-6" data-aos="zoom-in" data-aos-delay="0">
+            <div class="star-card">
+              <div class="star-card-inner use-case-card">
+                <div class="use-case-icon"><i class="fa-solid fa-building-columns"></i></div>
+                <h4>Universities &amp; Institutes</h4>
+                <p class="para-light">Issue degrees and transcripts on-chain so graduates never need paper attestation again.</p>
+                <ul class="use-case-list">
+                  <li>Bulk certificate issuance</li>
+                  <li>Admin-controlled exporters</li>
+                  <li>Permanent audit trail</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6" data-aos="zoom-in" data-aos-delay="150">
+            <div class="star-card">
+              <div class="star-card-inner use-case-card">
+                <div class="use-case-icon"><i class="fa-solid fa-briefcase"></i></div>
+                <h4>Employers &amp; HR Teams</h4>
+                <p class="para-light">Validate candidate credentials before hiring without calling issuers or waiting on email.</p>
+                <ul class="use-case-list">
+                  <li>One-click file verification</li>
+                  <li>No fake PDF detection guesswork</li>
+                  <li>On-chain proof of authenticity</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4 col-md-6" data-aos="zoom-in" data-aos-delay="300">
+            <div class="star-card">
+              <div class="star-card-inner use-case-card">
+                <div class="use-case-icon"><i class="fa-solid fa-user-graduate"></i></div>
+                <h4>Students &amp; Professionals</h4>
+                <p class="para-light">Own verifiable credentials you can share anywhere—job applications, visas, or licensing boards.</p>
+                <ul class="use-case-list">
+                  <li>Share files, not private keys</li>
+                  <li>Instant employer verification</li>
+                  <li>Tamper-evident records</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="home-section home-faq text-light py-5">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="text-center mb-5" data-aos="fade-up">
+              <p class="main-header-section d-inline-block">FAQ</p>
+              <h2 class="section-title mt-2">Common questions</h2>
+              <p class="para-light section-subtitle mx-auto">
+                Everything you need to know before uploading or verifying your first certificate.
+              </p>
+            </div>
+            <div class="accordion faq-accordion" id="faqAccordion" data-aos="fade-up" data-aos-delay="100">
+              <div class="accordion-item">
+                <h3 class="accordion-header">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="true" aria-controls="faq1">
+                    What blockchain does CertiFlex use?
+                  </button>
+                </h3>
+                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body para-light">
+                    CertiFlex runs on the Polygon Amoy testnet. You need MetaMask connected to that network and a small amount of test MATIC for upload and delete transactions.
                   </div>
                 </div>
               </div>
+              <div class="accordion-item">
+                <h3 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
+                    Is my certificate file stored on the blockchain?
+                  </button>
+                </h3>
+                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body para-light">
+                    No—the full file stays off-chain. Only a cryptographic hash of the document is written to the smart contract. Verification compares a new upload's hash against that on-chain value.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h3 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+                    Who can upload certificates?
+                  </button>
+                </h3>
+                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body para-light">
+                    Only wallet addresses approved as exporters by the contract admin can upload. Contact your institution's admin or use the Admin page if you manage the platform.
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h3 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
+                    Can a verified certificate be faked after upload?
+                  </button>
+                </h3>
+                <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body para-light">
+                    Any change to the file—even a single pixel—produces a different hash and will fail verification. The original hash on-chain cannot be altered without a new transaction from an authorized exporter.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
-    <section class="samples text-light">
-</section>
+      </div>
+    </section>
+
     <footer class="footer-dark">
       <div class="container">
         <div class="row">
@@ -344,7 +485,7 @@
     src="https://code.jquery.com/jquery-3.6.0.js"
     integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
     crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>    <script src="./js/purecounter.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./js/aos.js"></script>
     <script src="./js/script.js"></script>
     <script defer>

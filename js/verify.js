@@ -1,5 +1,5 @@
 window.CONTRACT = {
-  address: '0x149f99126Be306f53b9147A7B9f9b8c37039e3c3',
+  address: '0xB01753970CB6A7C7c5b4A5ECFF875DC17568aa7B',
   network: 'https://polygon-amoy.drpc.org',
   explore: 'https://amoy.polygonscan.com/',
   abi: [
@@ -224,13 +224,22 @@ const contract = new web3.eth.Contract(
 const SUCCESS_IMAGE = './files/securefiles.svg'
 const FAILURE_IMAGE = './files/notvalid.svg'
 
+function certEmoji(emoji, animation) {
+  if (typeof window.certEmoji === 'function') {
+    return window.certEmoji(emoji, animation)
+  }
+  const anim = animation || 'emoji-bounce'
+  return `<span class="${anim}" style="font-size: 1.35em; vertical-align: middle;" aria-hidden="true">${emoji}</span>`
+}
+
 window.addEventListener('load', async () => {
-  $('#loader').hide()
+  $('#loader').addClass('d-none')
   $('.loader-wraper').fadeOut('slow')
   window.hashedfiles = []
   await checkURL()
   $('#upload_file_button').attr('disabled', true)
   renderQueuedDocuments()
+  hideVerifyPanel()
 })
 
 async function verifyDocuments() {
@@ -254,7 +263,7 @@ async function verifyDocuments() {
     return
   }
 
-  $('#loader').show()
+  $('#loader').removeClass('d-none')
   const rows = []
   for (const item of fileHashes) {
     try {
@@ -264,6 +273,7 @@ async function verifyDocuments() {
         name: item.name,
         hash: item.hash,
         isVerified: isVerified,
+        chainResult: result,
         issuer: isVerified ? result[2] : '-',
         blockNumber: isVerified ? result[0] : '-',
         timestamp: isVerified ? formatTimestamp(result[1]) : '-',
@@ -274,6 +284,7 @@ async function verifyDocuments() {
         name: item.name,
         hash: item.hash,
         isVerified: false,
+        chainResult: null,
         issuer: 'Network error',
         blockNumber: '-',
         timestamp: '-',
@@ -283,7 +294,7 @@ async function verifyDocuments() {
     }
   }
   renderVerificationResults(rows)
-  $('#loader').hide()
+  $('#loader').addClass('d-none')
 }
 
 async function checkURL() {
@@ -317,7 +328,7 @@ async function getVerifySha3() {
   }
 
   $('#note').html(
-    `<h5 class="text-warning">Adding ${files.length} certificate(s) to queue <span style="font-size: 20px; display: inline-block; animation: pulse 1.5s infinite;">😴</span>...</h5>`,
+    `<h5 class="text-warning">Adding ${files.length} certificate(s) to queue ${certEmoji('😴', 'emoji-pulse')}...</h5>`,
   )
   $('#upload_file_button').attr('disabled', true)
 
@@ -334,7 +345,7 @@ async function getVerifySha3() {
     document.getElementById('doc-file').value = ''
     $('#upload_file_button').attr('disabled', false)
     $('#note').html(
-      `<h5 class="text-center text-info">Added ${newlyHashed.length} certificate(s). Total uploaded in queue: ${window.hashedfiles.length} <span style="font-size: 20px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😎</span></h5>`,
+      `<h5 class="text-center text-info">Added ${newlyHashed.length} certificate(s). Total in queue: ${window.hashedfiles.length} ${certEmoji('😎', 'emoji-bounce')}</h5>`,
     )
   } catch (e) {
     console.log('hashing error', e)
@@ -385,15 +396,49 @@ function renderVerificationResults(rows) {
   const verifiedCount = rows.filter((row) => row.isVerified).length
   const notVerifiedCount = totalCount - verifiedCount
 
+  let bannerEmoji
+  let bannerText
+  let bannerClass = 'alert-info'
+
+  if (totalCount === 0) {
+    bannerEmoji = certEmoji('😴', 'emoji-pulse')
+    bannerText = 'No certificates to verify.'
+    bannerClass = 'alert-warning'
+  } else if (verifiedCount === totalCount) {
+    bannerEmoji = certEmoji('😎', 'emoji-bounce')
+    bannerText =
+      totalCount === 1
+        ? 'Certificate verified on-chain!'
+        : `All ${totalCount} certificates verified on-chain!`
+    bannerClass = 'alert-success'
+  } else if (verifiedCount === 0) {
+    bannerEmoji = certEmoji('😢', 'emoji-shake')
+    bannerText =
+      totalCount === 1
+        ? 'Certificate not found or not verified.'
+        : `None of the ${totalCount} certificates were verified.`
+    bannerClass = 'alert-danger'
+  } else {
+    bannerEmoji = certEmoji('😕', 'emoji-pulse')
+    bannerText = `${verifiedCount} verified, ${notVerifiedCount} not verified.`
+    bannerClass = 'alert-warning'
+  }
+
   $('#verification-summary').html(
-    `<strong>Total:</strong> ${totalCount} &nbsp;|&nbsp; <strong>Verified:</strong> ${verifiedCount} &nbsp;|&nbsp; <strong>Not Verified:</strong> ${notVerifiedCount}`,
+    `<div class="verification-emoji-banner text-center mb-2">${bannerEmoji} ${bannerText}</div>
+     <p class="mb-0 text-center"><strong>Total:</strong> ${totalCount} &nbsp;|&nbsp; <strong>Verified:</strong> ${verifiedCount} &nbsp;|&nbsp; <strong>Not Verified:</strong> ${notVerifiedCount}</p>`,
+  )
+  $('#verification-summary').removeClass('alert-secondary alert-success alert-danger alert-warning alert-info').addClass(bannerClass)
+
+  $('#note').html(
+    `<h5 class="text-center ${verifiedCount === totalCount && totalCount > 0 ? 'text-info' : verifiedCount === 0 ? 'text-danger' : 'text-warning'}">${bannerEmoji} ${bannerText}</h5>`,
   )
 
   const rowsHtml = rows
     .map((row) => {
       const statusBadge = row.isVerified
-        ? '<span class="badge bg-success">Verified</span>'
-        : '<span class="badge bg-danger">Not Verified</span>'
+        ? `<span class="badge bg-success">Verified ${certEmoji('😎', 'emoji-bounce')}</span>`
+        : `<span class="badge bg-danger">Not Verified ${certEmoji('😢', 'emoji-shake')}</span>`
       const certificateUrls = buildIpfsGatewayUrls(row.ipfsHash)
       const fileLink =
         row.isVerified && certificateUrls.primary
@@ -416,7 +461,18 @@ function renderVerificationResults(rows) {
 
   $('#verification-results-body').html(rowsHtml)
   $('#verification-results').removeClass('d-none')
-  $('.transaction-status').addClass('d-none')
+
+  if (rows.length === 1) {
+    window.hashedfile = rows[0].hash
+    print_info(rows[0].chainResult || [], rows[0].isVerified)
+    showVerifyPanel()
+    document.querySelector('.transaction-status')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+    })
+  } else {
+    hideVerifyPanel()
+  }
 }
 
 function renderQueuedDocuments() {
@@ -445,9 +501,31 @@ function clearQueuedDocuments() {
   $('#verification-results').addClass('d-none')
   $('#verification-results-body').html('')
   $('#verification-summary').html('')
+  hideVerifyPanel()
   $('#note').html('<h5 class="text-center text-warning">Queue cleared</h5>')
   document.getElementById('doc-file').value = ''
   renderQueuedDocuments()
+}
+
+function showVerifyPanel() {
+  document.querySelector('.transaction-status')?.classList.remove('d-none')
+}
+
+function hideVerifyPanel() {
+  document.querySelector('.transaction-status')?.classList.add('d-none')
+}
+
+function setVerifyDetail(id, value) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const span = el.querySelector('span')
+  if (span) span.textContent = value
+  else el.textContent = value
+  el.classList.remove('d-none')
+}
+
+function hideVerifyDetail(id) {
+  document.getElementById(id)?.classList.add('d-none')
 }
 
 function formatTimestamp(unixTimestamp) {
@@ -491,70 +569,61 @@ function buildIpfsGatewayUrls(ipfsValue) {
 }
 
 function print_info(result, is_verified) {
-  //Default Image for not Verified Docunets
-  document.getElementById('student-document').src = FAILURE_IMAGE
-  $('#loader').hide()
-  // when document not verfied
-  if (!is_verified) {
-    // document.getElementById('download-document').classList.add('d-none')
-    $('#download-document').hide()
-    $('#doc-status').html(`<h3 class="text-danger">
-        Certificate not Verified <span style="font-size: 28px; display: inline-block; animation: shake 0.5s ease-in-out 3;">😕</span>
-         <i class="text-danger  fa fa-times-circle" aria-hidden="true"></i>
-        </h3>`)
-    $('#file-hash').html(
-      `<span class="text-info"><i class="fa-solid fa-hashtag"></i></span> ${truncateAddress(
-        window.hashedfile,
-      )}`,
-    )
-    $('#college-name').hide()
-    $('#contract-address').hide()
-    $('#time-stamps').hide()
-    $('#blockNumber').hide()
-    $('.transaction-status').show()
-  } else {
-    $('#download-document').show()
-    // when document verfied
-    $('#college-name').show()
-    $('#contract-address').show()
-    $('#time-stamps').show()
-    $('#blockNumber').show()
+  const statusBadge = document.getElementById('verify-status-badge')
+  const docStatus = document.getElementById('doc-status')
+  const previewImg = document.getElementById('student-document')
+  const downloadLink = document.getElementById('download-document')
 
-    var t = new Date(1970, 0, 1)
-    t.setSeconds(result[1])
-    console.log(result[1])
-    t.setHours(t.getHours() + 3)
-    // hide loader
-    $('#loader').hide()
-    $('#doc-status').html(`<h3 class="text-info">
-         Certificate Verified Successfully <span style="font-size: 28px; display: inline-block; animation: bounce 0.6s ease-in-out 3;">😊</span>
-         <i class="text-info fa fa-check-circle" aria-hidden="true"></i>
-        </h3>`)
-    $('#file-hash').html(
-      `<span class="text-info"><i class="fa-solid fa-hashtag"></i></span> ${truncateAddress(
-        window.hashedfile,
-      )}`,
-    )
-    $('#college-name').html(
-      `<span class="text-info"><i class="fa-solid fa-graduation-cap"></i></span> ${result[2]}`,
-    )
-    $('#contract-address').html(
-      `<span class="text-info"><i class="fa-solid fa-file-contract"></i> </span>${truncateAddress(
-        window.CONTRACT.address,
-      )}`,
-    )
-    $('#time-stamps').html(
-      `<span class="text-info"><i class="fa-solid fa-clock"></i> </span>${t}`,
-    )
-    $('#blockNumber').html(
-      `<span class="text-info"><i class="fa-solid fa-cube"></i></span> ${result[0]}`,
-    )
-    // Show a success illustration; link button opens actual certificate on IPFS
-    document.getElementById('student-document').src = SUCCESS_IMAGE
-    const linkSet = buildIpfsGatewayUrls(result[3])
-    document.getElementById('download-document').href = linkSet.primary
-    $('.transaction-status').show()
+  $('#loader').addClass('d-none')
+  previewImg.src = is_verified ? SUCCESS_IMAGE : FAILURE_IMAGE
+
+  if (!is_verified) {
+    if (statusBadge) {
+      statusBadge.className = 'verify-status-badge is-failed'
+      statusBadge.innerHTML =
+        '<i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> Not verified'
+    }
+    if (docStatus) {
+      docStatus.innerHTML = `Certificate not verified ${certEmoji('😢', 'emoji-shake')}`
+    }
+    setVerifyDetail('file-hash', truncateAddress(window.hashedfile))
+    hideVerifyDetail('college-name')
+    hideVerifyDetail('contract-address')
+    hideVerifyDetail('time-stamps')
+    hideVerifyDetail('blockNumber')
+    downloadLink?.classList.add('d-none')
+    showVerifyPanel()
+    return
   }
+
+  if (statusBadge) {
+    statusBadge.className = 'verify-status-badge is-verified'
+    statusBadge.innerHTML =
+      '<i class="fa-solid fa-circle-check" aria-hidden="true"></i> Verified on-chain'
+  }
+  if (docStatus) {
+    docStatus.innerHTML = `Certificate verified successfully ${certEmoji('😎', 'emoji-bounce')}`
+  }
+
+  const t = new Date(1970, 0, 1)
+  t.setSeconds(result[1])
+  t.setHours(t.getHours() + 3)
+
+  setVerifyDetail('file-hash', truncateAddress(window.hashedfile))
+  setVerifyDetail('college-name', result[2])
+  setVerifyDetail('contract-address', truncateAddress(window.CONTRACT.address))
+  setVerifyDetail('time-stamps', t.toString())
+  setVerifyDetail('blockNumber', String(result[0]))
+
+  const linkSet = buildIpfsGatewayUrls(result[3])
+  if (downloadLink && linkSet.primary) {
+    downloadLink.href = linkSet.primary
+    downloadLink.classList.remove('d-none')
+  } else {
+    downloadLink?.classList.add('d-none')
+  }
+
+  showVerifyPanel()
 }
 
 function truncateAddress(address) {

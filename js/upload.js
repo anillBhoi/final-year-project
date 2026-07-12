@@ -29,20 +29,21 @@ async function uploadDocument() {
         $('#note').html(`<h5 class="text-info">Hashing document...</h5>`)
 
         // Hash the document
+      const hash = await new Promise((resolve, reject) => {
         const reader = new FileReader()
-        
-        const hash = await new Promise((resolve, reject) => {
-            reader.onload = function(event) {
-                try {
-                    const hashedFile = web3.utils.soliditySha3(event.target.result)
-                    resolve(hashedFile)
-                } catch (error) {
-                    reject(error)
-                }
-            }
-            reader.onerror = reject
-            reader.readAsText(file, 'UTF-8')
-        })
+        reader.readAsArrayBuffer(file)
+        reader.onload = function(event) {
+          try {
+            const bytes = new Uint8Array(event.target.result)
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+            const hashedFile = web3.utils.soliditySha3('0x' + hex)
+            resolve(hashedFile)
+          } catch (error) {
+            reject(error)
+          }
+        }
+        reader.onerror = reject
+      })
 
         // Check if document already exists
         const [timestamp] = await window.contractRPC.methods

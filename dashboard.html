@@ -17,7 +17,9 @@
     />
     <link rel="stylesheet" href="css/main.css" />
     <link rel="icon" href="./assets/images/icon.png" />
-    <title>Admin Dashboard</title>
+    <!-- Chart.js for beautiful charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <title>Analytics Dashboard — CertiFlex</title>
   </head>
 
   <body>
@@ -53,8 +55,8 @@
             <li class="nav-item user-nav"><a class="nav-link" href="upload.html">Upload</a></li>
             <li class="nav-item user-nav"><a class="nav-link" href="verify.html">Verify</a></li>
             <li class="nav-item user-nav"><a class="nav-link" href="delete.html">Delete</a></li>
-            <li class="nav-item owner-only d-none"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
-            <li class="nav-item owner-only d-none"><a class="nav-link active" href="admin.html">Admin</a></li>
+            <li class="nav-item owner-only d-none"><a class="nav-link active" href="dashboard.html">Dashboard</a></li>
+            <li class="nav-item owner-only d-none"><a class="nav-link" href="admin.html">Admin</a></li>
           </ul>
           <div class="d-flex">
             <button id="loginButton" onclick="connect()" class="btn main-button" type="button">Login</button>
@@ -64,20 +66,54 @@
       </div>
     </nav>
 
-    <main class="admin-page content">
+    <main class="admin-page dashboard-page content">
       <div class="admin-wrapper">
         <div class="alert alert-danger d-none mt-2">
           Please download MetaMask at
           <a target="_blank" href="https://metamask.io/download">Metamask Site</a>
         </div>
 
-        <div data-aos="fade-down" class="account-card wallet-status box">
+        <header data-aos="fade-down" class="dashboard-hero">
+          <div>
+            <p class="account-card-eyebrow">Contract owner</p>
+            <h1 class="dashboard-hero-title">Analytics Dashboard</h1>
+            <p class="dashboard-hero-sub">Live on-chain metrics for CertiFlex certificates and exporters.</p>
+          </div>
+          <a href="admin.html" class="btn main-button dashboard-hero-cta">
+            <i class="fa-solid fa-user-shield me-2" aria-hidden="true"></i>
+            Manage exporters
+          </a>
+        </header>
+
+        <div data-aos="fade-up" class="dashboard-kpi-grid">
+          <article class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Total certificates</span>
+            <strong class="dashboard-kpi-value" id="dash-total-docs">—</strong>
+            <span class="dashboard-kpi-hint">Registered document hashes</span>
+          </article>
+          <article class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Authorized exporters</span>
+            <strong class="dashboard-kpi-value" id="dash-total-exporters">—</strong>
+            <span class="dashboard-kpi-hint">Active issuing institutions</span>
+          </article>
+          <article class="dashboard-kpi dashboard-kpi--accent">
+            <span class="dashboard-kpi-label">Uploads (recent window)</span>
+            <strong class="dashboard-kpi-value" id="dash-recent-uploads">—</strong>
+            <span class="dashboard-kpi-hint">Events in scanned blocks</span>
+          </article>
+          <article class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Wallet balance</span>
+            <strong class="dashboard-kpi-value dashboard-kpi-value--sm" id="dash-balance">—</strong>
+            <span class="dashboard-kpi-hint" id="dash-network">—</span>
+          </article>
+        </div>
+
+        <div data-aos="fade-up" class="account-card wallet-status box">
           <div class="account-card-header">
             <div>
-              <p class="account-card-eyebrow">Exporter management</p>
-              <h6 class="account-card-title">Contract overview</h6>
+              <p class="account-card-eyebrow">Connected wallet</p>
+              <h6 class="account-card-title">Owner session</h6>
             </div>
-            <a href="dashboard.html" class="btn main-button btn-sm">View analytics</a>
             <span class="account-connected-badge">
               <i class="fa-solid fa-circle" aria-hidden="true"></i>
               Connected
@@ -92,84 +128,59 @@
               <span class="account-stat-label">Network</span>
               <div class="account-stat-value account-stat-value--network" id="network">—</div>
             </div>
-            <div class="account-stat account-stat-highlight">
-              <span class="account-stat-label" title="Balance in MATIC">Balance</span>
-              <div class="account-stat-value account-stat-value--balance" id="userBalance">—</div>
+            <div class="account-stat">
+              <span class="account-stat-label">Contract</span>
+              <div class="account-stat-value account-stat-value--wallet" id="dash-contract">—</div>
             </div>
             <div class="account-stat">
-              <span class="account-stat-label">Documents</span>
-              <div class="account-stat-value" id="num-hashes">—</div>
-            </div>
-            <div class="account-stat">
-              <span class="account-stat-label">Exporters</span>
-              <div class="account-stat-value" id="num-exporters">—</div>
-            </div>
-            <div class="account-stat">
-              <span class="account-stat-label">Your role</span>
-              <div class="account-stat-value" id="account-role">—</div>
+              <span class="account-stat-label">Contract owner</span>
+              <div class="account-stat-value account-stat-value--wallet" id="dash-owner">—</div>
             </div>
           </div>
         </div>
 
-        <div data-aos="zoom-in" class="admin-panel">
-          <div class="admin-panel-header">
-            <h2 class="admin-panel-title">
-              <i class="fa-solid fa-user-shield me-2" aria-hidden="true"></i>
-              Manage exporters
-            </h2>
-            <p class="admin-panel-sub">
-              Add, edit, or remove authorized certificate issuers. Only the contract owner can perform these actions.
-            </p>
-          </div>
-
-          <form class="admin-form" onsubmit="return false;">
-            <div class="admin-field">
-              <label for="Exporter-address">Exporter wallet address</label>
-              <input
-                id="Exporter-address"
-                type="text"
-                placeholder="0x..."
-                autocomplete="off"
-                required
-              />
+        <div class="dashboard-panels">
+          <!-- Certificates Over Time Chart (Line Chart) -->
+          <section data-aos="zoom-in" class="admin-panel dashboard-panel">
+            <div class="admin-panel-header">
+              <h2 class="admin-panel-title">
+                <i class="fa-solid fa-chart-line me-2" aria-hidden="true"></i>
+                Certificates Over Time
+              </h2>
+              <p class="admin-panel-sub">Certificate registrations in the last 14 days.</p>
             </div>
-            <div class="admin-field">
-              <label for="info">Organization name</label>
-              <input
-                id="info"
-                type="text"
-                placeholder="University or organization name"
-                required
-              />
+            <div style="position: relative; height: 300px;">
+              <canvas id="certificatesChart"></canvas>
             </div>
+          </section>
 
-            <div id="note" class="admin-note text-danger" role="status" aria-live="polite"></div>
-            <img id="loader" class="admin-loader d-none" src="files/loader.svg" alt="Loading" />
-
-            <div class="admin-actions">
-              <input
-                onclick="addExporter()"
-                class="btn btn-add exporter-button"
-                type="button"
-                value="Add Exporter"
-                id="ExporterBtn"
-              />
-              <input
-                onclick="editExporter()"
-                class="btn btn-edit exporter-button"
-                type="button"
-                value="Edit Exporter"
-                id="edit"
-              />
-              <input
-                onclick="deleteExporter()"
-                class="btn btn-delete-exp exporter-button"
-                type="button"
-                value="Delete Exporter"
-                id="delete"
-              />
+          <!-- Exporter vs Certificates Chart (Bar Chart) -->
+          <section data-aos="zoom-in" class="admin-panel dashboard-panel">
+            <div class="admin-panel-header">
+              <h2 class="admin-panel-title">
+                <i class="fa-solid fa-users me-2" aria-hidden="true"></i>
+                Exporter Activity
+              </h2>
+              <p class="admin-panel-sub">Number of certificates per exporter.</p>
             </div>
-          </form>
+            <div style="position: relative; height: 300px;">
+              <canvas id="exportersChart"></canvas>
+            </div>
+          </section>
+
+          <!-- Overview Donut Chart -->
+          <section data-aos="zoom-in" class="admin-panel dashboard-panel">
+            <div class="admin-panel-header">
+              <h2 class="admin-panel-title">
+                <i class="fa-solid fa-chart-pie me-2" aria-hidden="true"></i>
+                Platform Overview
+              </h2>
+              <p class="admin-panel-sub">Total certificates, exporters, and recent activity.</p>
+            </div>
+            <div style="position: relative; height: 300px; display: flex; justify-content: center;">
+              <canvas id="overviewChart" style="max-width: 400px;"></canvas>
+            </div>
+          </section>
         </div>
       </div>
     </main>
@@ -185,36 +196,17 @@
               <li><a href="#">Smart Contracts</a></li>
             </ul>
           </div>
-          <div class="col-sm-6 col-md-3 item">
-            <h3 data-aos="fade-right">About us</h3>
-            <ul data-aos="zoom-in">
-              <li><a href="#">Company</a></li>
-              <li><a href="#">Team</a></li>
-            </ul>
-          </div>
           <div class="col-md-6 item text">
             <h3 data-aos="fade-right">
               <i class="fa-brands fa-ethereum"></i>
               CertiFlex
             </h3>
-            <p data-aos="zoom-in">
-              Generate, verify, and trust certificates like never before — powered by blockchain for complete transparency and security.
-            </p>
-          </div>
-          <div data-aos="zoom-in" class="col item social">
-            <a href="#"><i class="fa-brands fa-facebook"></i></a>
-            <a href="#"><i class="fa-brands fa-twitter"></i></a>
-            <a href="https://github.com/anillBhoi/final-year-project"><i class="fa-brands fa-github"></i></a>
-            <a href="#"><i class="fa-brands fa-instagram"></i></a>
+            <p data-aos="zoom-in">Blockchain-backed certificate verification platform.</p>
           </div>
         </div>
         <p class="copyright">CertiFlex © 2026</p>
       </div>
     </footer>
-
-    <a title="Send Email" href="mailto:xyz@gmail.com?subject=From CertiFlex Site">
-      <i class="mail-us fa-solid fa-headset"></i>
-    </a>
 
     <script src="./js/aos.js"></script>
     <script src="./js/script.js"></script>
@@ -224,16 +216,6 @@
       crossorigin="anonymous"
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/admin.js"></script>
-    <script>
-      document.getElementById('Exporter-address').addEventListener('focus', function () {
-        $('#note').html('')
-        if (window.isContractOwner) {
-          $('#ExporterBtn').attr('disabled', false)
-          $('#edit').attr('disabled', false)
-          $('#delete').attr('disabled', false)
-        }
-      })
-    </script>
+    <script src="js/dashboard.js"></script>
   </body>
 </html>

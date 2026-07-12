@@ -1,3 +1,8 @@
+/** Animated emoji for status messages (upload, verify, delete, etc.) */
+window.certEmoji = function certEmoji(emoji, animation) {
+  const anim = animation || 'emoji-bounce'
+  return `<span class="${anim}" style="font-size: 1.35em; line-height: 1; vertical-align: middle;" aria-hidden="true">${emoji}</span>`
+}
 
 window.onscroll = function () {
 	scrollFunctionBTT(); // back to top button
